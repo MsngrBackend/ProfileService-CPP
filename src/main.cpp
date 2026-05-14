@@ -1,3 +1,5 @@
+#include <signal.h>
+#include <pthread.h>
 #include "server.hpp"
 #include "utils/logger.hpp"
 

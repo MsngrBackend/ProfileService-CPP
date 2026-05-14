@@ -5,12 +5,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Find packages
-find_package(Boost REQUIRED COMPONENTS system program_options)
+find_package(Boost REQUIRED COMPONENTS system program_options log log_setup thread filesystem regex date_time)
 find_package(Threads REQUIRED)
 find_package(PkgConfig REQUIRED)
 
-# For nlohmann_json
 include(FetchContent)
 FetchContent_Declare(
   nlohmann_json
@@ -19,18 +17,25 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-# For libpqxx
 pkg_check_modules(PQXX REQUIRED libpqxx)
 
-# For libpq
-find_library(PQ_LIB pq)
-find_path(PQ_INCLUDE_DIR libpq-fe.h)
+# libpq — ищем явно
+find_library(PQ_LIB pq REQUIRED)
+find_path(PQ_INCLUDE_DIR libpq-fe.h
+    PATHS /usr/include/postgresql /usr/include
+    REQUIRED
+)
 
-# For libminio-cpp
-find_library(MINIO_LIB minio)
-find_path(MINIO_INCLUDE_DIR minio/client.h)
+# minio-cpp — установлен через cmake --install, лежит в /usr/local
+find_library(MINIO_LIB miniocpp
+    PATHS /usr/local/lib
+    REQUIRED
+)
+find_path(MINIO_INCLUDE_DIR miniocpp/client.h
+    PATHS /usr/local/include
+    REQUIRED
+)
 
-# Source files
 set(SOURCES
   src/main.cpp
   src/server.cpp
@@ -49,20 +54,23 @@ set(SOURCES
   src/repository/minio_storage.cpp
 )
 
-# Create executable
 add_executable(profile_service ${SOURCES})
 
-# Include directories
 target_include_directories(profile_service PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service        # добавить
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/handlers  # добавить
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/repository # добавить
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/domain    # добавить
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/utils     # добавить
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${Boost_INCLUDE_DIRS}
   ${PQXX_INCLUDE_DIRS}
   ${PQ_INCLUDE_DIR}
   ${MINIO_INCLUDE_DIR}
+  /vcpkg/installed/x64-linux/include
 )
 
-# Link libraries
 target_link_libraries(profile_service
   ${Boost_LIBRARIES}
   ${PQXX_LIBRARIES}
@@ -70,10 +78,22 @@ target_link_libraries(profile_service
   ${MINIO_LIB}
   Threads::Threads
   nlohmann_json::nlohmann_json
+  z
+  boost_log
+  boost_log_setup
+  boost_thread
+  boost_filesystem
+  boost_regex
+  boost_date_time
+  /vcpkg/installed/x64-linux/lib/libcurlpp.a
+  /vcpkg/installed/x64-linux/lib/libcurl.a
+  /vcpkg/installed/x64-linux/lib/libssl.a
+  /vcpkg/installed/x64-linux/lib/libcrypto.a
+  /vcpkg/installed/x64-linux/lib/libpugixml.a
+  /vcpkg/installed/x64-linux/lib/libINIReader.a
+  /vcpkg/installed/x64-linux/lib/libinih.a
+  dl
 )
 
-# Set compiler options
 target_compile_options(profile_service PRIVATE -Wall -Wextra -O2)
-
-# Install
 install(TARGETS profile_service DESTINATION bin)
