@@ -77,22 +77,32 @@ find_path(PQ_INCLUDE_DIR libpq-fe.h
 )
 
 # =========================================================
-# MinIO C++
+# MinIO C++ - Try pkg-config first, fallback to manual find
 # =========================================================
 
-find_library(MINIO_LIB miniocpp
-    PATHS
-        /usr/local/lib
-        /usr/lib
-    REQUIRED
-)
+# Try pkg-config first (preferred)
+pkg_check_modules(MINIO libminiocpp)
 
-find_path(MINIO_INCLUDE_DIR miniocpp/client.h
-    PATHS
-        /usr/local/include
-        /usr/include
-    REQUIRED
-)
+if(NOT MINIO_FOUND)
+    # Fallback to manual find
+    find_library(MINIO_LIB miniocpp
+        PATHS
+            /usr/local/lib
+            /usr/lib
+        REQUIRED
+    )
+    
+    find_path(MINIO_INCLUDE_DIR miniocpp/client.h
+        PATHS
+            /usr/local/include
+            /usr/include
+        REQUIRED
+    )
+    
+    # Set MINIO_LIBRARIES and MINIO_INCLUDE_DIRS for consistency
+    set(MINIO_LIBRARIES ${MINIO_LIB})
+    set(MINIO_INCLUDE_DIRS ${MINIO_INCLUDE_DIR})
+endif()
 
 # =========================================================
 # Sources
@@ -129,7 +139,6 @@ add_executable(profile_service ${SOURCES})
 # =========================================================
 
 target_include_directories(profile_service PRIVATE
-
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 
@@ -138,7 +147,7 @@ target_include_directories(profile_service PRIVATE
     ${PQXX_INCLUDE_DIRS}
     ${PQ_INCLUDE_DIR}
 
-    ${MINIO_INCLUDE_DIR}
+    ${MINIO_INCLUDE_DIRS}
 
     ${PUGIXML_INCLUDE_DIRS}
 
@@ -182,7 +191,7 @@ target_link_libraries(profile_service PRIVATE
     ${CURLPP_LIBRARIES}
 
     # MinIO
-    ${MINIO_LIB}
+    ${MINIO_LIBRARIES}
 
     # JSON
     nlohmann_json::nlohmann_json
