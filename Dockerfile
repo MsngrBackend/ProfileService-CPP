@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     git \
     curl \
+    libcurlpp-dev \
     zip \
     unzip \
     tar \
