@@ -46,12 +46,12 @@ set_target_properties(unofficial::inih::inih PROPERTIES
 )
 EOF
 
-# Build minio-cpp from source using the LATEST master branch (not a shallow clone)
+# Build minio-cpp from source using the LATEST main branch (not a shallow clone)
 RUN git clone https://github.com/minio/minio-cpp.git /tmp/minio-cpp && \
     cd /tmp/minio-cpp && \
-    # Use the latest master branch which has better compatibility
-    git checkout master && \
-    git pull origin master && \
+    # Use the latest main branch which has better compatibility
+    git checkout main && \
+    git pull origin main && \
     # Build and install
     cmake -B build \
         -DCMAKE_BUILD_TYPE=Release \
