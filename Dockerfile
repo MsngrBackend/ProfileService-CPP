@@ -16,25 +16,30 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     zlib1g-dev \
     libcurl4-openssl-dev \
+    libcurlpp-dev \
     libpqxx-dev \
     libboost-all-dev \
     nlohmann-json3-dev \
     libpugixml-dev \
     libinih-dev \
+    ninja-build \
     && rm -rf /var/lib/apt/lists/*
 
-# Install vcpkg
+# Install vcpkg with specific version to avoid CMake 4.x bug
 RUN git clone https://github.com/Microsoft/vcpkg.git /opt/vcpkg && \
-    /opt/vcpkg/bootstrap-vcpkg.sh
+    cd /opt/vcpkg && \
+    # Pin to a known working version (December 2024)
+    git checkout 2024.12.09 && \
+    ./bootstrap-vcpkg.sh -disableMetrics
 
-# Install minio-cpp using vcpkg
-RUN /opt/vcpkg/vcpkg install minio-cpp --triplet x64-linux
+# Install minio-cpp using vcpkg with ARM64 triplet
+RUN /opt/vcpkg/vcpkg install minio-cpp --triplet arm64-linux
 
 # Copy source code
 WORKDIR /build
 COPY . .
 
-# Configure and build the application, informing CMake about vcpkg
+# Configure and build the application
 RUN mkdir -p build && \
     cd build && \
     cmake .. \
@@ -45,7 +50,7 @@ RUN mkdir -p build && \
 # Stage 2: Runtime
 FROM ubuntu:24.04
 
-# Install runtime dependencies (same as before)
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
@@ -62,6 +67,13 @@ RUN apt-get update && apt-get install -y \
     libpugixml1v5 \
     zlib1g \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy vcpkg-installed libraries
+COPY --from=builder /opt/vcpkg/installed/arm64-linux/lib/*.so* /usr/local/lib/
+COPY --from=builder /opt/vcpkg/installed/arm64-linux/include/minio-cpp/ /usr/local/include/minio-cpp/
+
+# Update library cache
+RUN ldconfig
 
 # Copy the built executable
 COPY --from=builder /build/build/profile_service /usr/local/bin/
