@@ -1,7 +1,8 @@
+# Multi-stage build for Profile Service
+# Stage 1: Builder
 FROM ubuntu:24.04 AS builder
 
-ENV DEBIAN_FRONTEND=noninteractive
-
+# Install build dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
@@ -25,74 +26,56 @@ RUN apt-get update && apt-get install -y \
     libinih-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# ------------------------------------------------------------------
-# FIX unofficial curlpp package config for minio-cpp
-# ------------------------------------------------------------------
-
+# Create CMake config for curlpp (if needed)
 RUN mkdir -p /usr/local/lib/cmake/unofficial-curlpp && \
     cat > /usr/local/lib/cmake/unofficial-curlpp/unofficial-curlppConfig.cmake <<'EOF'
 add_library(unofficial::curlpp::curlpp INTERFACE IMPORTED)
-
-find_library(CURLPP_LIBRARY curlpp REQUIRED)
-find_library(CURL_LIBRARY curl REQUIRED)
-
-target_link_libraries(unofficial::curlpp::curlpp
-    INTERFACE
-    ${CURLPP_LIBRARY}
-    ${CURL_LIBRARY}
+set_target_properties(unofficial::curlpp::curlpp PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "/usr/include/curlpp"
+    INTERFACE_LINK_LIBRARIES "curl"
 )
 EOF
 
-# ------------------------------------------------------------------
-# FIX unofficial inih package config for minio-cpp
-# ------------------------------------------------------------------
-
+# Create CMake config for inih (if needed)
 RUN mkdir -p /usr/local/lib/cmake/unofficial-inih && \
     cat > /usr/local/lib/cmake/unofficial-inih/unofficial-inihConfig.cmake <<'EOF'
-find_path(INIH_INCLUDE_DIR
-    NAMES INIReader.h
-    PATHS /usr/include
-    REQUIRED
-)
-
-add_library(unofficial::inih::inireader INTERFACE IMPORTED)
-
-target_include_directories(unofficial::inih::inireader
-    INTERFACE
-    ${INIH_INCLUDE_DIR}
+add_library(unofficial::inih::inih INTERFACE IMPORTED)
+set_target_properties(unofficial::inih::inih PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "/usr/include"
+    INTERFACE_LINK_LIBRARIES "inih"
 )
 EOF
 
-# ------------------------------------------------------------------
-# Build minio-cpp
-# ------------------------------------------------------------------
-
-RUN git clone --depth 1 https://github.com/minio/minio-cpp.git /tmp/minio-cpp && \
+# Build minio-cpp from source using the LATEST master branch (not a shallow clone)
+RUN git clone https://github.com/minio/minio-cpp.git /tmp/minio-cpp && \
     cd /tmp/minio-cpp && \
+    # Use the latest master branch which has better compatibility
+    git checkout master && \
+    git pull origin master && \
+    # Build and install
     cmake -B build \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake;/usr/lib/aarch64-linux-gnu/cmake" && \
+        -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake;/usr/lib/$(uname -m)-linux-gnu/cmake" && \
     cmake --build build -j$(nproc) && \
     cmake --install build
 
-WORKDIR /app
-
+# Copy source code
+WORKDIR /build
 COPY . .
 
-RUN cmake -B build \
-    -DCMAKE_BUILD_TYPE=Release
+# Configure and build the application
+RUN mkdir -p build && \
+    cd build && \
+    cmake .. \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake;/usr/lib/$(uname -m)-linux-gnu/cmake" && \
+    cmake --build . -j$(nproc)
 
-RUN cmake --build build -j$(nproc)
-
-# ==================================================================
-# RUNTIME
-# ==================================================================
-
+# Stage 2: Runtime
 FROM ubuntu:24.04
 
-ENV DEBIAN_FRONTEND=noninteractive
-
+# Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
@@ -100,7 +83,6 @@ RUN apt-get update && apt-get install -y \
     libboost-system1.83.0 \
     libboost-program-options1.83.0 \
     libboost-log1.83.0 \
-    libboost-log1.83-dev \
     libboost-thread1.83.0 \
     libboost-filesystem1.83.0 \
     libboost-regex1.83.0 \
@@ -113,13 +95,21 @@ RUN apt-get update && apt-get install -y \
     zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /app
-
+# Copy minio-cpp libraries from builder
 COPY --from=builder /usr/local/lib/libminiocpp.so* /usr/local/lib/
-COPY --from=builder /app/build/profile_service /app/profile_service
+COPY --from=builder /usr/local/include/minio-cpp/ /usr/local/include/minio-cpp/
 
+# Update library cache
 RUN ldconfig
 
-EXPOSE 8080
+# Copy the built executable
+COPY --from=builder /build/build/profile_service /usr/local/bin/
 
-CMD ["./profile_service"]
+# Expose port
+EXPOSE 8082
+
+# Set working directory
+WORKDIR /app
+
+# Run the service
+CMD ["/usr/local/bin/profile_service"]
