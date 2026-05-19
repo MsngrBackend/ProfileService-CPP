@@ -1,6 +1,7 @@
-FROM ubuntu:22.04 AS builder
+# Multi-stage build for Profile Service
 
-ENV DEBIAN_FRONTEND=noninteractive
+# Stage 1: Builder
+FROM ubuntu:22.04 AS builder
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -10,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     pkg-config \
     git \
     curl \
+    libcurl4-openssl-dev \
     libcurlpp-dev \
     zip \
     unzip \
@@ -18,41 +20,28 @@ RUN apt-get update && apt-get install -y \
     libboost-all-dev \
     libssl-dev \
     zlib1g-dev \
-    nlohmann-json3-dev
+    nlohmann-json3-dev \
+    libpugixml-dev \
+    libinih-dev \
+    && rm -rf /var/lib/apt/lists/*
 
-# Устанавливаем vcpkg
-RUN git clone https://github.com/microsoft/vcpkg.git /vcpkg && \
-    /vcpkg/bootstrap-vcpkg.sh -disableMetrics
-
-# Устанавливаем зависимости minio через vcpkg
-RUN /vcpkg/vcpkg install curlpp pugixml inih
-
-# Собираем minio-cpp
+# Build minio-cpp (still needs vcpkg or manual build)
 RUN git clone https://github.com/minio/minio-cpp.git /minio-cpp && \
     cd /minio-cpp && \
-    cmake -B build \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_TOOLCHAIN_FILE=/vcpkg/scripts/buildsystems/vcpkg.cmake && \
+    # Manual build without vcpkg
+    cmake -B build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build -j$(nproc) && \
     cmake --install build
 
 WORKDIR /app
 COPY . .
 
-RUN find / -name "libminio*" 2>/dev/null | head -20 && \
-    find /usr/local/include -type f -name "*.h" 2>/dev/null | head -20 && \
-    find /minio-cpp -name "client.h" 2>/dev/null
-
-RUN grep -n "PutObject\|UploadObject\|ApiArgs" /usr/local/include/miniocpp/baseclient.h | head -30
-
-RUN cmake -B build \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_TOOLCHAIN_FILE=/vcpkg/scripts/buildsystems/vcpkg.cmake && \
+# Build the application
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build -j$(nproc)
 
+# Stage 2: Runtime
 FROM ubuntu:22.04
-
-ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y \
     libpqxx-dev \
@@ -63,15 +52,19 @@ RUN apt-get update && apt-get install -y \
     libboost-filesystem1.74.0 \
     libboost-regex1.74.0 \
     libboost-date-time1.74.0 \
-    libcurl4 \
-    libssl3 \
+    libcurl4t64 \
+    libcurlpp-dev \
+    libssl3t64 \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=builder /app/build/profile_service .
-COPY --from=builder /usr/local/lib/libminio* /usr/local/lib/
-COPY --from=builder /vcpkg/installed/x64-linux/lib/libcurlpp* /usr/local/lib/
-RUN ldconfig
+
+COPY --from=builder /app/build/profile_service /app/
+COPY --from=builder /usr/local/lib/libminiocpp* /usr/local/lib/
+
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 
 EXPOSE 8082
+
 CMD ["./profile_service"]
