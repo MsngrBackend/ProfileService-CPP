@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ProfileService-CPP Test UI</title>
+    <style>
+      :root {
+        --bg: #f1efe8;
+        --panel: rgba(255, 252, 245, 0.9);
+        --text: #231c18;
+        --muted: #6c645b;
+        --line: rgba(56, 43, 31, 0.12);
+        --accent: #0f766e;
+        --accent-2: #b45309;
+        --danger: #b91c1c;
+        --ok: #166534;
+        --shadow: 0 18px 40px rgba(36, 27, 18, 0.12);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: "Avenir Next", "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(15, 118, 110, 0.16), transparent 26%),
+          radial-gradient(circle at top right, rgba(180, 83, 9, 0.16), transparent 24%),
+          linear-gradient(180deg, #f6f3ec 0%, #ece5d8 100%);
+        min-height: 100vh;
+      }
+
+      .shell {
+        width: min(1280px, calc(100% - 32px));
+        margin: 24px auto 40px;
+      }
+
+      .hero,
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 24px;
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(14px);
+      }
+
+      .hero {
+        padding: 28px;
+        margin-bottom: 18px;
+      }
+
+      .hero h1 {
+        margin: 0 0 8px;
+        font-size: clamp(30px, 5vw, 52px);
+        line-height: 0.94;
+        letter-spacing: -0.04em;
+      }
+
+      .hero p {
+        margin: 0;
+        max-width: 760px;
+        color: var(--muted);
+      }
+
+      .toolbar {
+        display: grid;
+        grid-template-columns: 1.3fr 1fr 1fr auto;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 18px;
+      }
+
+      .card {
+        padding: 20px;
+      }
+
+      .wide {
+        grid-column: 1 / -1;
+      }
+
+      h2 {
+        margin: 0 0 6px;
+        font-size: 22px;
+        letter-spacing: -0.03em;
+      }
+
+      .sub {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .inline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      input,
+      textarea,
+      select,
+      button {
+        font: inherit;
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: 12px 14px;
+        border: 1px solid rgba(56, 43, 31, 0.16);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.78);
+        color: var(--text);
+        outline: none;
+        transition: border-color 160ms ease, transform 160ms ease;
+      }
+
+      input:focus,
+      textarea:focus,
+      select:focus {
+        border-color: rgba(15, 118, 110, 0.6);
+        transform: translateY(-1px);
+      }
+
+      textarea {
+        min-height: 104px;
+        resize: vertical;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 12px 16px;
+        color: #f9f7f2;
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--accent), #0b8f85);
+        box-shadow: 0 10px 18px rgba(15, 118, 110, 0.22);
+      }
+
+      button.secondary {
+        background: linear-gradient(135deg, var(--accent-2), #d97706);
+        box-shadow: 0 10px 18px rgba(180, 83, 9, 0.22);
+      }
+
+      button.ghost {
+        color: var(--text);
+        background: rgba(35, 28, 24, 0.08);
+        box-shadow: none;
+      }
+
+      .status {
+        margin: 0 0 12px;
+        font-weight: 700;
+      }
+
+      .status.ok { color: var(--ok); }
+      .status.err { color: var(--danger); }
+
+      pre {
+        margin: 0;
+        min-height: 160px;
+        padding: 16px;
+        border-radius: 18px;
+        background: rgba(24, 20, 18, 0.94);
+        color: #f7eee5;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 13px;
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 980px) {
+        .toolbar,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <section class="hero">
+        <h1>ProfileService-CPP Test UI</h1>
+        <p>
+          Одноразовый стенд для ручной проверки C++ profile-сервиса. Все запросы идут с
+          заголовком <code>X-User-ID</code>, а ответы и ошибки сразу падают в общий лог.
+        </p>
+      </section>
+
+      <section class="toolbar">
+        <div>
+          <label for="baseUrl">Backend URL</label>
+          <input id="baseUrl" value="http://localhost:8082" />
+        </div>
+        <div>
+          <label for="userId">Active User ID</label>
+          <input id="userId" value="11111111-1111-1111-1111-111111111111" />
+        </div>
+        <div>
+          <label for="secondUserId">Contact / Secondary User ID</label>
+          <input id="secondUserId" value="22222222-2222-2222-2222-222222222222" />
+        </div>
+        <div class="inline" style="align-items:end;">
+          <button id="seedUsers">Создать 2 профиля</button>
+        </div>
+      </section>
+
+      <section class="grid">
+        <article class="card">
+          <h2>Профиль</h2>
+          <p class="sub">Создание, чтение и обновление текущего профиля.</p>
+          <div class="stack">
+            <div>
+              <label for="firstName">First name</label>
+              <input id="firstName" value="Dima" />
+            </div>
+            <div>
+              <label for="lastName">Last name</label>
+              <input id="lastName" value="Belousov" />
+            </div>
+            <div>
+              <label for="username">Username</label>
+              <input id="username" value="dima_cpp" />
+            </div>
+            <div>
+              <label for="bio">Bio</label>
+              <textarea id="bio">Проверяю C++ profile service через временный UI.</textarea>
+            </div>
+            <div class="inline">
+              <button data-action="createProfile">Create profile</button>
+              <button class="secondary" data-action="getMe">Get /me</button>
+              <button class="ghost" data-action="updateMe">PATCH /me</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Avatar</h2>
+          <p class="sub">Загружает base64 в `/me/avatar`. В этой тестовой сборке URL генерируется без реального object storage.</p>
+          <div class="stack">
+            <div>
+              <label for="avatarFile">Image file</label>
+              <input id="avatarFile" type="file" accept="image/*" />
+            </div>
+            <div class="inline">
+              <button data-action="uploadAvatar">Upload avatar</button>
+              <button class="ghost" data-action="deleteAvatar">DELETE avatar</button>
+            </div>
+            <div class="hint" id="avatarHint">Файл пока не выбран.</div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Privacy</h2>
+          <p class="sub">Текущие настройки приватности.</p>
+          <div class="stack">
+            <div>
+              <label for="profileVisibility">Profile visibility</label>
+              <select id="profileVisibility">
+                <option value="everyone">everyone</option>
+                <option value="contacts">contacts</option>
+                <option value="nobody">nobody</option>
+              </select>
+            </div>
+            <div>
+              <label for="lastSeenVisibility">Last seen visibility</label>
+              <select id="lastSeenVisibility">
+                <option value="everyone">everyone</option>
+                <option value="contacts">contacts</option>
+                <option value="nobody">nobody</option>
+              </select>
+            </div>
+            <div>
+              <label for="avatarVisibility">Avatar visibility</label>
+              <select id="avatarVisibility">
+                <option value="everyone">everyone</option>
+                <option value="contacts">contacts</option>
+                <option value="nobody">nobody</option>
+              </select>
+            </div>
+            <div class="inline">
+              <button data-action="getPrivacy">GET privacy</button>
+              <button class="secondary" data-action="updatePrivacy">PUT privacy</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Contacts</h2>
+          <p class="sub">Добавь второй профиль в контакты активного пользователя.</p>
+          <div class="stack">
+            <div>
+              <label for="contactAlias">Alias</label>
+              <input id="contactAlias" value="Work account" />
+            </div>
+            <div class="inline">
+              <button data-action="listContacts">GET contacts</button>
+              <button class="secondary" data-action="addContact">POST contact</button>
+              <button class="ghost" data-action="deleteContact">DELETE contact</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Favorites</h2>
+          <p class="sub">Тест ручек `/favorites` и `/favorites/{chat_id}`.</p>
+          <div class="stack">
+            <div>
+              <label for="chatId">Chat ID</label>
+              <input id="chatId" value="33333333-3333-3333-3333-333333333333" />
+            </div>
+            <div class="inline">
+              <button data-action="listFavorites">GET favorites</button>
+              <button class="secondary" data-action="addFavorite">POST favorite</button>
+              <button class="ghost" data-action="removeFavorite">DELETE favorite</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Notifications</h2>
+          <p class="sub">Глобальные и chat-specific настройки mute.</p>
+          <div class="stack">
+            <div>
+              <label for="notificationsMuted">Muted</label>
+              <select id="notificationsMuted">
+                <option value="false">false</option>
+                <option value="true">true</option>
+              </select>
+            </div>
+            <div>
+              <label for="mutedUntil">Muted until (RFC3339, optional)</label>
+              <input id="mutedUntil" placeholder="2026-05-13T18:00:00Z" />
+            </div>
+            <div class="inline">
+              <button data-action="getNotifications">GET global</button>
+              <button class="secondary" data-action="updateNotifications">PUT global</button>
+            </div>
+            <div class="inline">
+              <button data-action="getChatNotifications">GET chat</button>
+              <button class="ghost" data-action="updateChatNotifications">PUT chat</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card wide">
+          <h2>Request Log</h2>
+          <p id="status" class="status">Ожидание запроса.</p>
+          <pre id="log"></pre>
+        </article>
+      </section>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const logEl = $("log");
+      const statusEl = $("status");
+      let avatarPayload = null;
+
+      function setStatus(text, ok = true) {
+        statusEl.textContent = text;
+        statusEl.className = ok ? "status ok" : "status err";
+      }
+
+      function pretty(value) {
+        if (typeof value === "string") return value;
+        return JSON.stringify(value, null, 2);
+      }
+
+      function getBaseUrl() {
+        return $("baseUrl").value.trim().replace(/\/$/, "");
+      }
+
+      function getUserId() {
+        return $("userId").value.trim();
+      }
+
+      function getSecondUserId() {
+        return $("secondUserId").value.trim();
+      }
+
+      async function apiRequest(path, options = {}) {
+        const method = options.method || "GET";
+        const headers = {
+          "X-User-ID": getUserId(),
+          ...(options.body ? { "Content-Type": "application/json" } : {}),
+          ...(options.headers || {}),
+        };
+
+        const response = await fetch(getBaseUrl() + path, {
+          ...options,
+          method,
+          headers,
+          body: options.body ? JSON.stringify(options.body) : undefined,
+        });
+
+        const text = await response.text();
+        let parsed = text;
+        try {
+          parsed = text ? JSON.parse(text) : "";
+        } catch (_) {}
+
+        logEl.textContent =
+          pretty({
+            request: {
+              method,
+              url: getBaseUrl() + path,
+              headers,
+              body: options.body || null,
+            },
+            response: {
+              status: response.status,
+              ok: response.ok,
+              body: parsed,
+            },
+          });
+
+        setStatus(`${method} ${path} -> ${response.status}`, response.ok);
+        return { response, parsed };
+      }
+
+      async function createProfileFor(userId) {
+        return fetch(getBaseUrl() + "/internal/profiles", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-User-ID": userId,
+          },
+          body: JSON.stringify({ user_id: userId }),
+        });
+      }
+
+      $("avatarFile").addEventListener("change", async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) {
+          avatarPayload = null;
+          $("avatarHint").textContent = "Файл пока не выбран.";
+          return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = String(reader.result || "");
+          avatarPayload = {
+            image_data: result.split(",")[1] || "",
+            content_type: file.type || "image/jpeg",
+          };
+          $("avatarHint").textContent = `Готово: ${file.name}, ${file.type || "image/jpeg"}`;
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const actions = {
+        async seedUsers() {
+          await createProfileFor(getUserId());
+          const second = await createProfileFor(getSecondUserId());
+          const text = await second.text();
+          logEl.textContent = pretty({
+            seeded_users: [getUserId(), getSecondUserId()],
+            second_user_response: text ? JSON.parse(text) : "",
+          });
+          setStatus("Базовые профили созданы или уже существовали.", true);
+        },
+        createProfile() {
+          return apiRequest("/internal/profiles", {
+            method: "POST",
+            body: { user_id: getUserId() },
+          });
+        },
+        getMe() {
+          return apiRequest("/me");
+        },
+        updateMe() {
+          return apiRequest("/me", {
+            method: "PATCH",
+            body: {
+              first_name: $("firstName").value.trim(),
+              last_name: $("lastName").value.trim(),
+              username: $("username").value.trim(),
+              bio: $("bio").value.trim(),
+            },
+          });
+        },
+        uploadAvatar() {
+          if (!avatarPayload) {
+            setStatus("Сначала выбери картинку для avatar upload.", false);
+            return;
+          }
+          return apiRequest("/me/avatar", {
+            method: "POST",
+            body: avatarPayload,
+          });
+        },
+        deleteAvatar() {
+          return apiRequest("/me/avatar", { method: "DELETE" });
+        },
+        getPrivacy() {
+          return apiRequest("/me/privacy");
+        },
+        updatePrivacy() {
+          return apiRequest("/me/privacy", {
+            method: "PUT",
+            body: {
+              profile_visibility: $("profileVisibility").value,
+              last_seen_visibility: $("lastSeenVisibility").value,
+              avatar_visibility: $("avatarVisibility").value,
+            },
+          });
+        },
+        listContacts() {
+          return apiRequest("/contacts");
+        },
+        addContact() {
+          return apiRequest("/contacts", {
+            method: "POST",
+            body: {
+              contact_id: getSecondUserId(),
+              alias: $("contactAlias").value.trim(),
+            },
+          });
+        },
+        deleteContact() {
+          return apiRequest(`/contacts/${getSecondUserId()}`, {
+            method: "DELETE",
+          });
+        },
+        listFavorites() {
+          return apiRequest("/favorites");
+        },
+        addFavorite() {
+          return apiRequest(`/favorites/${$("chatId").value.trim()}`, {
+            method: "POST",
+          });
+        },
+        removeFavorite() {
+          return apiRequest(`/favorites/${$("chatId").value.trim()}`, {
+            method: "DELETE",
+          });
+        },
+        getNotifications() {
+          return apiRequest("/notifications");
+        },
+        updateNotifications() {
+          return apiRequest("/notifications", {
+            method: "PUT",
+            body: {
+              muted: $("notificationsMuted").value === "true",
+              muted_until: $("mutedUntil").value.trim() || null,
+            },
+          });
+        },
+        getChatNotifications() {
+          return apiRequest(`/notifications/${$("chatId").value.trim()}`);
+        },
+        updateChatNotifications() {
+          return apiRequest(`/notifications/${$("chatId").value.trim()}`, {
+            method: "PUT",
+            body: {
+              muted: $("notificationsMuted").value === "true",
+              muted_until: $("mutedUntil").value.trim() || null,
+            },
+          });
+        },
+      };
+
+      document.querySelectorAll("[data-action]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const name = button.dataset.action;
+          try {
+            await actions[name]();
+          } catch (error) {
+            setStatus(`${name} failed`, false);
+            logEl.textContent = pretty({
+              action: name,
+              error: String(error),
+            });
+          }
+        });
+      });
+
+      $("seedUsers").addEventListener("click", () => actions.seedUsers());
+      logEl.textContent = pretty({
+        tip: "Начни с кнопки 'Создать 2 профиля', потом используй остальные секции.",
+      });
+    </script>
+  </body>
+  </html>

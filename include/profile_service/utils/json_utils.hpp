@@ -3,9 +3,13 @@
 
 #include <nlohmann/json.hpp>
 #include <chrono>
+#include <cstdint>
+#include <iomanip>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
 #include <string>
 #include <vector>
-#include <cstdint>
 
 namespace msngr::profile::utils {
 
@@ -26,6 +30,14 @@ inline std::string FormatTimestamp(const std::chrono::system_clock::time_point& 
     std::ostringstream ss;
     ss << std::put_time(&tm, "%Y-%m-%dT%H:%M:%SZ");
     return ss.str();
+}
+
+template <typename T>
+inline nlohmann::json OptionalToJson(const std::optional<T>& value) {
+    if (value.has_value()) {
+        return *value;
+    }
+    return nullptr;
 }
 
 inline std::vector<uint8_t> DecodeBase64(const std::string& encoded) {

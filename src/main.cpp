@@ -5,6 +5,7 @@
 
 #include <boost/program_options.hpp>
 #include <pqxx/pqxx>
+#include <csignal>
 #include <cstdlib>
 #include <memory>
 #include <iostream>

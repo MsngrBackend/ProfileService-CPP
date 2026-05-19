@@ -2,7 +2,6 @@
 #define MSNGR__PROFILE__REPOSITORY__MINIO_STORAGE_HPP_
 
 #include "repository.hpp"
-#include <miniocpp/client.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -18,7 +17,9 @@ public:
     void Delete(const std::string& user_id) override;
     
 private:
-    std::unique_ptr<minio::s3::Client> client_;
+    std::string endpoint_;
+    std::string access_key_;
+    std::string secret_key_;
     static constexpr const char* bucket_name_ = "avatars";
 };
 

@@ -2,6 +2,7 @@
 #define MSNGR__PROFILE__UTILS__LOGGER_HPP_
 
 #include <cstdint>
+#include <iostream>
 
 #include <boost/log/trivial.hpp>
 #include <boost/log/utility/setup/file.hpp>

@@ -18,6 +18,8 @@
 #include <boost/beast/http.hpp>
 #include <nlohmann/json.hpp>
 
+#include <cstdlib>
+#include <optional>
 #include <pqxx/pqxx>
 
 namespace beast = boost::beast;
@@ -60,35 +62,34 @@ public:
   beast_http::response<beast_http::string_body> Handle(
     const beast_http::request<beast_http::string_body>& request) 
   {
-    // Extract user ID
-    std::string user_id = ExtractUserID(request);
-
-    // Check authentication
-    if (user_id.empty()) {
-      LOG(error) << "Missing X-User-ID header";
-      return handlers::ErrorResponse(401, request.version(), "missing X-User-ID");
-    }
-
     auto method = request.method();
     auto target = std::string(request.target());
 
-    auto it = m_route_map.find(target);
-    if (it == m_route_map.end()) {
+    if (method == beast_http::verb::options) {
+      return handlers::JsonResponse(204, request.version(), "");
+    }
+
+    auto route_info = ResolveRoute(target, method);
+    if (!route_info.has_value()) {
       LOG(error) << "Route not found: " << request.method_string() << " " << target;
       return handlers::ErrorResponse(404, request.version(), "route_not_found");
     }
+    const auto& handler_info = *route_info;
 
-    auto handler_it = it->second.find(method);
-    if (handler_it == it->second.end()) {
-      LOG(error) << "Method not allowed: " << request.method_string() << " " << target;
-      return handlers::ErrorResponse(405, request.version(), "method_not_allowed");
-    }
+    std::string user_id = ExtractUserID(request);
+    const bool is_internal_create_profile =
+      method == beast_http::verb::post && target == "/internal/profiles";
 
-    const auto& [handler_id, scope] = handler_it->second;
+    if (!is_internal_create_profile) {
+      if (user_id.empty()) {
+        LOG(error) << "Missing X-User-ID header";
+        return handlers::ErrorResponse(401, request.version(), "missing X-User-ID");
+      }
 
-    if (!m_auth_checker->Check(user_id, scope)) {
-      LOG(error) << "Auth failed: " << request.method_string() << " " << target;
-      return handlers::ErrorResponse(403, request.version(), "auth_failed");
+      if (!m_auth_checker->Check(user_id, handler_info.scope)) {
+        LOG(error) << "Auth failed: " << request.method_string() << " " << target;
+        return handlers::ErrorResponse(403, request.version(), "auth_failed");
+      }
     }
 
     handlers::RouteContext ctx;
@@ -104,11 +105,50 @@ public:
       ctx.PathParams["user_id"] = target.substr(1);
     }
 
-    auto handler = m_handler_factory->Bind(handler_id);
+    auto handler = m_handler_factory->Bind(handler_info.id);
     return handler(request, ctx);
   }
 
 private:
+  std::optional<HandlerInfo> ResolveRoute(const std::string& target, beast_http::verb method) const {
+    auto find_exact = [&](const std::string& path) -> std::optional<HandlerInfo> {
+      auto it = m_route_map.find(path);
+      if (it == m_route_map.end()) {
+        return std::nullopt;
+      }
+
+      auto handler_it = it->second.find(method);
+      if (handler_it == it->second.end()) {
+        return std::nullopt;
+      }
+
+      return handler_it->second;
+    };
+
+    if (auto exact = find_exact(target); exact.has_value()) {
+      return exact;
+    }
+
+    if (target.rfind("/contacts/", 0) == 0) {
+      return find_exact("/contacts/{contact_id}");
+    }
+
+    if (target.rfind("/favorites/", 0) == 0) {
+      return find_exact("/favorites/{chat_id}");
+    }
+
+    if (target.rfind("/notifications/", 0) == 0) {
+      return find_exact("/notifications/{chat_id}");
+    }
+
+    if (target != "/me" && target != "/me/avatar" && target != "/me/privacy" &&
+        target.rfind("/", 0) == 0 && target.find('/', 1) == std::string::npos) {
+      return find_exact("/{user_id}");
+    }
+
+    return std::nullopt;
+  }
+
   void BuildRouteMap() {
     const auto & spec = GetApiSpec();
 
@@ -117,7 +157,7 @@ private:
       size_t colon_pos = key.find(':');
       if (colon_pos != std::string::npos) {
         std::string path = key.substr(0, colon_pos);
-        m_route_map[path][info.method] = {info.id, info.scope};
+        m_route_map[path][info.method] = info;
       }
     }
   }
@@ -135,10 +175,6 @@ private:
   std::shared_ptr<handlers::HandlerFactory> m_handler_factory;
   std::shared_ptr<IAuthChecker> m_auth_checker;
 
-  struct HandlerInfo {
-    HandlerId id;
-    std::string scope;
-  };
   std::unordered_map<std::string, std::unordered_map<beast_http::verb, HandlerInfo>> m_route_map;
 };
 
