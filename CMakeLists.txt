@@ -17,24 +17,52 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
+# Use pkg-config for everything possible
 pkg_check_modules(PQXX REQUIRED libpqxx)
+pkg_check_modules(CURLPP libcurlpp)
+pkg_check_modules(CURL REQUIRED libcurl)
+pkg_check_modules(PUGIXML REQUIRED pugixml)
+pkg_check_modules(INIH REQUIRED inih)
 
-# libpq — ищем явно
+# libpq
 find_library(PQ_LIB pq REQUIRED)
 find_path(PQ_INCLUDE_DIR libpq-fe.h
     PATHS /usr/include/postgresql /usr/include
     REQUIRED
 )
 
-# minio-cpp — установлен через cmake --install, лежит в /usr/local
+# minio-cpp
 find_library(MINIO_LIB miniocpp
-    PATHS /usr/local/lib
+    PATHS /usr/local/lib /usr/lib
     REQUIRED
 )
 find_path(MINIO_INCLUDE_DIR miniocpp/client.h
-    PATHS /usr/local/include
+    PATHS /usr/local/include /usr/include
     REQUIRED
 )
+
+# Try vcpkg if pkg-config didn't find curlpp
+if(NOT CURLPP_FOUND)
+    find_path(CURLPP_INCLUDE_DIR curlpp/Easy.hpp
+        PATHS /vcpkg/installed/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux/include
+              /vcpkg/installed/arm64-linux/include
+              /vcpkg/installed/aarch64-linux/include
+              /usr/local/include
+        REQUIRED
+    )
+    find_library(CURLPP_LIB curlpp
+        PATHS /vcpkg/installed/${CMAKE_HOST_SYSTEM_PROCESSOR}-linux/lib
+              /vcpkg/installed/arm64-linux/lib
+              /vcpkg/installed/aarch64-linux/lib
+              /usr/local/lib
+        REQUIRED
+    )
+    add_library(CURLPP::curlpp UNKNOWN IMPORTED)
+    set_target_properties(CURLPP::curlpp PROPERTIES
+        IMPORTED_LOCATION ${CURLPP_LIB}
+        INTERFACE_INCLUDE_DIRECTORIES ${CURLPP_INCLUDE_DIR}
+    )
+endif()
 
 set(SOURCES
   src/main.cpp
@@ -58,17 +86,20 @@ add_executable(profile_service ${SOURCES})
 
 target_include_directories(profile_service PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service        # добавить
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/handlers  # добавить
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/repository # добавить
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/domain    # добавить
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/utils     # добавить
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/handlers
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/repository
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/domain
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/utils
   ${CMAKE_CURRENT_SOURCE_DIR}/src
   ${Boost_INCLUDE_DIRS}
   ${PQXX_INCLUDE_DIRS}
   ${PQ_INCLUDE_DIR}
   ${MINIO_INCLUDE_DIR}
-  /vcpkg/installed/x64-linux/include
+  ${CURLPP_INCLUDE_DIRS}
+  ${CURL_INCLUDE_DIRS}
+  ${PUGIXML_INCLUDE_DIRS}
+  ${INIH_INCLUDE_DIRS}
 )
 
 target_link_libraries(profile_service
@@ -85,15 +116,24 @@ target_link_libraries(profile_service
   boost_filesystem
   boost_regex
   boost_date_time
-  /vcpkg/installed/x64-linux/lib/libcurlpp.a
-  /vcpkg/installed/x64-linux/lib/libcurl.a
-  /vcpkg/installed/x64-linux/lib/libssl.a
-  /vcpkg/installed/x64-linux/lib/libcrypto.a
-  /vcpkg/installed/x64-linux/lib/libpugixml.a
-  /vcpkg/installed/x64-linux/lib/libINIReader.a
-  /vcpkg/installed/x64-linux/lib/libinih.a
   dl
 )
+
+if(CURLPP_FOUND)
+    target_link_libraries(profile_service ${CURLPP_LIBRARIES} ${CURL_LIBRARIES})
+else()
+    target_link_libraries(profile_service CURLPP::curlpp ${CURL_LIBRARIES})
+endif()
+
+if(PUGIXML_FOUND)
+    target_link_libraries(profile_service ${PUGIXML_LIBRARIES})
+    target_include_directories(profile_service PRIVATE ${PUGIXML_INCLUDE_DIRS})
+endif()
+
+if(INIH_FOUND)
+    target_link_libraries(profile_service ${INIH_LIBRARIES})
+    target_include_directories(profile_service PRIVATE ${INIH_INCLUDE_DIRS})
+endif()
 
 target_compile_options(profile_service PRIVATE -Wall -Wextra -O2)
 install(TARGETS profile_service DESTINATION bin)
