@@ -1,14 +1,6 @@
-# ============================================================
-# Stage 1: Builder
-# ============================================================
-
 FROM ubuntu:24.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
-
-# ============================================================
-# Install build dependencies
-# ============================================================
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -33,90 +25,72 @@ RUN apt-get update && apt-get install -y \
     libinih-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# ============================================================
-# unofficial-curlpp compatibility package
-# minio-cpp expects unofficial::curlpp
-# ============================================================
+# ------------------------------------------------------------------
+# FIX unofficial curlpp package config for minio-cpp
+# ------------------------------------------------------------------
 
 RUN mkdir -p /usr/local/lib/cmake/unofficial-curlpp && \
     cat > /usr/local/lib/cmake/unofficial-curlpp/unofficial-curlppConfig.cmake <<'EOF'
-find_library(CURLPP_LIBRARY NAMES curlpp REQUIRED)
-find_path(CURLPP_INCLUDE_DIR NAMES curlpp/cURLpp.hpp REQUIRED)
+add_library(unofficial::curlpp::curlpp INTERFACE IMPORTED)
 
-add_library(unofficial::curlpp UNKNOWN IMPORTED)
+find_library(CURLPP_LIBRARY curlpp REQUIRED)
+find_library(CURL_LIBRARY curl REQUIRED)
 
-set_target_properties(unofficial::curlpp PROPERTIES
-    IMPORTED_LOCATION "${CURLPP_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${CURLPP_INCLUDE_DIR}"
+target_link_libraries(unofficial::curlpp::curlpp
+    INTERFACE
+    ${CURLPP_LIBRARY}
+    ${CURL_LIBRARY}
 )
 EOF
 
-# ============================================================
-# unofficial-inih compatibility package
-# minio-cpp expects unofficial::inih
-# ============================================================
+# ------------------------------------------------------------------
+# FIX unofficial inih package config for minio-cpp
+# ------------------------------------------------------------------
 
 RUN mkdir -p /usr/local/lib/cmake/unofficial-inih && \
     cat > /usr/local/lib/cmake/unofficial-inih/unofficial-inihConfig.cmake <<'EOF'
-find_library(INIH_LIBRARY NAMES inih REQUIRED)
-
-find_path(INIH_INCLUDE_DIR NAMES INIReader.h
-    PATHS
-        /usr/include
-        /usr/local/include
-    REQUIRED
+find_path(INIH_INCLUDE_DIR
+    NAMES inih/INIReader.h
+    PATHS /usr/include
 )
 
-add_library(unofficial::inih::libinih UNKNOWN IMPORTED)
-add_library(unofficial::inih::inireader UNKNOWN IMPORTED)
+add_library(unofficial::inih::inireader INTERFACE IMPORTED)
 
-set_target_properties(unofficial::inih::libinih PROPERTIES
-    IMPORTED_LOCATION "${INIH_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${INIH_INCLUDE_DIR}"
-)
-
-set_target_properties(unofficial::inih::inireader PROPERTIES
-    IMPORTED_LOCATION "${INIH_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${INIH_INCLUDE_DIR}"
+target_include_directories(unofficial::inih::inireader
+    INTERFACE
+    ${INIH_INCLUDE_DIR}
 )
 EOF
 
-# ============================================================
-# Build and install minio-cpp
-# ============================================================
+# ------------------------------------------------------------------
+# Build minio-cpp
+# ------------------------------------------------------------------
 
 RUN git clone --depth 1 https://github.com/minio/minio-cpp.git /tmp/minio-cpp && \
     cd /tmp/minio-cpp && \
     cmake -B build \
         -DCMAKE_BUILD_TYPE=Release \
         -DBUILD_SHARED_LIBS=ON \
-        -DCMAKE_PREFIX_PATH=/usr/local/lib/cmake && \
+        -DCMAKE_PREFIX_PATH="/usr/local/lib/cmake;/usr/lib/aarch64-linux-gnu/cmake" && \
     cmake --build build -j$(nproc) && \
     cmake --install build
-
-# ============================================================
-# Build profile service
-# ============================================================
 
 WORKDIR /app
 
 COPY . .
 
 RUN cmake -B build \
-        -DCMAKE_BUILD_TYPE=Release && \
-    cmake --build build -j$(nproc)
+    -DCMAKE_BUILD_TYPE=Release
 
-# ============================================================
-# Stage 2: Runtime
-# ============================================================
+RUN cmake --build build -j$(nproc)
+
+# ==================================================================
+# RUNTIME
+# ==================================================================
 
 FROM ubuntu:24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
-
-# ============================================================
-# Runtime dependencies only
-# ============================================================
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
@@ -132,49 +106,19 @@ RUN apt-get update && apt-get install -y \
     libboost-date-time1.83.0 \
     libssl3t64 \
     libcurl4t64 \
-    libcurlpp0 \
+    libcurlpp0t64 \
     libinih1 \
+    libpugixml1v5 \
     zlib1g \
     && rm -rf /var/lib/apt/lists/*
 
-# ============================================================
-# App directory
-# ============================================================
-
 WORKDIR /app
 
-# ============================================================
-# Copy binary
-# ============================================================
-
-COPY --from=builder /app/build/profile_service .
-
-# ============================================================
-# Copy minio-cpp shared libraries
-# ============================================================
-
-COPY --from=builder /usr/local/lib/libminiocpp* /usr/local/lib/
-
-# ============================================================
-# Refresh linker cache
-# ============================================================
+COPY --from=builder /usr/local/lib/libminiocpp.so* /usr/local/lib/
+COPY --from=builder /app/build/profile_service /app/profile_service
 
 RUN ldconfig
 
-# ============================================================
-# Runtime library path
-# ============================================================
-
-ENV LD_LIBRARY_PATH=/usr/local/lib
-
-# ============================================================
-# Expose app port
-# ============================================================
-
-EXPOSE 8082
-
-# ============================================================
-# Start service
-# ============================================================
+EXPOSE 8080
 
 CMD ["./profile_service"]
