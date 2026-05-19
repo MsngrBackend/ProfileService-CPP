@@ -115,7 +115,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
-    libpqxx-7.7 \
+    libpqxx-dev \
     libboost-system1.83.0 \
     libboost-program-options1.83.0 \
     libboost-log1.83.0 \
