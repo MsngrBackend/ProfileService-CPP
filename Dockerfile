@@ -4,6 +4,7 @@
 # Stage 1: Builder
 FROM ubuntu:24.04 AS builder
 
+# Install build dependencies including curlpp
 RUN apt-get update && apt-get install -y \
     build-essential \
     gcc \
@@ -26,10 +27,35 @@ RUN apt-get update && apt-get install -y \
     libinih-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Create a cmake config for curlpp (minio-cpp expects unofficial-curlpp)
+RUN mkdir -p /usr/local/lib/cmake/unofficial-curlpp && \
+    cat > /usr/local/lib/cmake/unofficial-curlpp/unofficial-curlppConfig.cmake <<'EOF'
+# CMake config for curlpp
+include(FindPkgConfig)
+pkg_check_modules(CURLPP IMPORTED_TARGET libcurlpp)
+if(NOT CURLPP_FOUND)
+    find_library(CURLPP_LIBRARY NAMES curlpp)
+    find_path(CURLPP_INCLUDE_DIR NAMES curlpp/cURLpp.hpp)
+    if(CURLPP_LIBRARY AND CURLPP_INCLUDE_DIR)
+        add_library(unofficial::curlpp UNKNOWN IMPORTED)
+        set_target_properties(unofficial::curlpp PROPERTIES
+            IMPORTED_LOCATION "${CURLPP_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${CURLPP_INCLUDE_DIR}"
+        )
+    endif()
+endif()
+EOF
+
 # Build minio-cpp
 RUN git clone --depth 1 https://github.com/minio/minio-cpp.git /minio-cpp && \
     cd /minio-cpp && \
-    cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON && \
+    # Patch CMakeLists.txt to find curlpp
+    sed -i 's/find_package(unofficial-curlpp REQUIRED)/find_package(PkgConfig REQUIRED)\npkg_check_modules(CURLPP REQUIRED libcurlpp)/' CMakeLists.txt && \
+    cmake -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DBUILD_SHARED_LIBS=ON \
+        -DCMAKE_PREFIX_PATH=/usr/local/lib/cmake/unofficial-curlpp \
+        -DCMAKE_CXX_FLAGS="-I/usr/include/curlpp" && \
     cmake --build build -j$(nproc) && \
     cmake --install build
 
