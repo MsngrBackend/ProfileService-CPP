@@ -1,7 +1,8 @@
 # Multi-stage build for Profile Service
+# Using Ubuntu 24.04 for better package support
 
 # Stage 1: Builder
-FROM ubuntu:22.04 AS builder
+FROM ubuntu:24.04 AS builder
 
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -25,11 +26,10 @@ RUN apt-get update && apt-get install -y \
     libinih-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Build minio-cpp (still needs vcpkg or manual build)
-RUN git clone https://github.com/minio/minio-cpp.git /minio-cpp && \
+# Build minio-cpp
+RUN git clone --depth 1 https://github.com/minio/minio-cpp.git /minio-cpp && \
     cd /minio-cpp && \
-    # Manual build without vcpkg
-    cmake -B build -DCMAKE_BUILD_TYPE=Release && \
+    cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON && \
     cmake --build build -j$(nproc) && \
     cmake --install build
 
@@ -41,17 +41,17 @@ RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && \
     cmake --build build -j$(nproc)
 
 # Stage 2: Runtime
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 RUN apt-get update && apt-get install -y \
     libpqxx-dev \
-    libboost-system1.74.0 \
-    libboost-program-options1.74.0 \
-    libboost-log1.74.0 \
-    libboost-thread1.74.0 \
-    libboost-filesystem1.74.0 \
-    libboost-regex1.74.0 \
-    libboost-date-time1.74.0 \
+    libboost-system1.83.0 \
+    libboost-program-options1.83.0 \
+    libboost-log1.83.0 \
+    libboost-thread1.83.0 \
+    libboost-filesystem1.83.0 \
+    libboost-regex1.83.0 \
+    libboost-date-time1.83.0 \
     libcurl4t64 \
     libcurlpp-dev \
     libssl3t64 \
@@ -62,6 +62,7 @@ WORKDIR /app
 
 COPY --from=builder /app/build/profile_service /app/
 COPY --from=builder /usr/local/lib/libminiocpp* /usr/local/lib/
+COPY --from=builder /usr/local/lib/cmake/miniocpp /usr/local/lib/cmake/miniocpp 2>/dev/null || true
 
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 
