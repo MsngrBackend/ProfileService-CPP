@@ -1,3 +1,4 @@
+#include <ctime>
 #include "notifications_repository.hpp"
 #include <chrono>
 
@@ -54,14 +55,30 @@ domain::NotificationSettings NotificationRepositoryPostgres::Get(
 
 void NotificationRepositoryPostgres::Upsert(const domain::NotificationSettings& settings) {
     pqxx::work txn(*conn_);
-    
-    txn.exec_params(
-        "INSERT INTO notification_settings (user_id, chat_id, muted, muted_until) "
-        "VALUES ($1, $2, $3, $4) "
-        "ON CONFLICT (user_id, chat_id) DO UPDATE SET "
-        "muted = $3, muted_until = $4",
-        settings.UserID, settings.ChatID, settings.Muted, settings.MutedUntil
-    );
+
+    if (settings.MutedUntil.has_value()) {
+        auto seconds = std::chrono::duration_cast<std::chrono::seconds>(
+            settings.MutedUntil.value().time_since_epoch()).count();
+        std::time_t t = static_cast<std::time_t>(seconds);
+        char buf[32];
+        std::strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", std::gmtime(&t));
+
+        txn.exec_params(
+            "INSERT INTO notification_settings (user_id, chat_id, muted, muted_until) "
+            "VALUES ($1, $2, $3, $4) "
+            "ON CONFLICT (user_id, chat_id) DO UPDATE SET muted = $3, muted_until = $4",
+            settings.UserID, settings.ChatID, settings.Muted, std::string(buf)
+        );
+    }
+    else {
+        txn.exec_params(
+            "INSERT INTO notification_settings (user_id, chat_id, muted, muted_until) "
+            "VALUES ($1, $2, $3, NULL) "
+            "ON CONFLICT (user_id, chat_id) DO UPDATE SET muted = $3, muted_until = NULL",
+            settings.UserID, settings.ChatID, settings.Muted
+        );
+    }
+
     txn.commit();
 }
 
