@@ -59,7 +59,13 @@ EOF
 RUN mkdir -p /usr/local/lib/cmake/unofficial-inih && \
     cat > /usr/local/lib/cmake/unofficial-inih/unofficial-inihConfig.cmake <<'EOF'
 find_library(INIH_LIBRARY NAMES inih REQUIRED)
-find_path(INIH_INCLUDE_DIR NAMES inih/INIReader.h REQUIRED)
+
+find_path(INIH_INCLUDE_DIR NAMES INIReader.h
+    PATHS
+        /usr/include
+        /usr/local/include
+    REQUIRED
+)
 
 add_library(unofficial::inih::libinih UNKNOWN IMPORTED)
 add_library(unofficial::inih::inireader UNKNOWN IMPORTED)
