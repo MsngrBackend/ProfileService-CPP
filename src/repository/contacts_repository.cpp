@@ -1,53 +1,47 @@
-#include "profile_service/repository/contacts_repository.hpp"
+#include "contacts_repository.hpp"
+#include "mappers.hpp"
 
 namespace msngr::profile::repository {
 
-ContactsRepositoryPostgres::ContactsRepositoryPostgres(std::shared_ptr<IDatabaseConnection> conn)
-  : m_connection(std::move(conn)) {}
+ContactsRepository::ContactsRepository(std::shared_ptr<QueryExecutor> executor)
+  : m_executor(std::move(executor)) {}
 
-std::vector<domain::Contact> ContactsRepositoryPostgres::List(const std::string & ownerId) {
-  pqxx::work txn(m_connection->Connection());
-
-  auto result = txn.exec_params(
+std::vector<domain::Contact> ContactsRepository::List(const std::string & ownerId) {
+  const std::string query =
     "SELECT owner_id, contact_id, alias, created_at FROM contacts "
-    "WHERE owner_id = $1 ORDER BY created_at DESC",
-    ownerId
-  );
+    "WHERE owner_id = $1 ORDER BY created_at DESC";
+
+  auto result = m_executor->ExecuteSelect(query, {ownerId});
 
   std::vector<domain::Contact> contacts;
-  for (const auto& row : result) {
-    domain::Contact contact;
-    contact.OwnerID = row["owner_id"].as<std::string>();
-    contact.ContactID = row["contact_id"].as<std::string>();
-    if (!row["alias"].is_null()) {
-      contact.Alias = row["alias"].as<std::string>();
+  if (result && !result->Empty()) {
+    for (size_t i = 0; i < result->Size(); ++i) {
+      auto row = result->GetRow(i);
+      contacts.push_back(ContactMapper::MapRow(row.get()));
     }
-    contacts.push_back(contact);
   }
 
   return contacts;
 }
 
-void ContactsRepositoryPostgres::Add(const domain::Contact & contact) {
-  pqxx::work txn(m_connection->Connection());
-
-  txn.exec_params(
+void ContactsRepository::Add(const domain::Contact & contact) {
+  const std::string query =
     "INSERT INTO contacts (owner_id, contact_id, alias) "
     "VALUES ($1, $2, $3) "
-    "ON CONFLICT (owner_id, contact_id) DO UPDATE SET alias = $3",
-    contact.OwnerID, contact.ContactID, contact.Alias
-  );
-  txn.commit();
+    "ON CONFLICT (owner_id, contact_id) DO UPDATE SET alias = $3";
+
+  m_executor->ExecuteModify(query, {
+    contact.OwnerID, 
+    contact.ContactID, 
+    contact.Alias.value_or("")
+  });
 }
 
-void ContactsRepositoryPostgres::Remove(const std::string & ownerId, const std::string & contactId) {
-  pqxx::work txn(m_connection->Connection());
+void ContactsRepository::Remove(const std::string & ownerId, const std::string & contactId) {
+  const std::string query =
+    "DELETE FROM contacts WHERE owner_id = $1 AND contact_id = $2";
 
-  txn.exec_params(
-    "DELETE FROM contacts WHERE owner_id = $1 AND contact_id = $2",
-    ownerId, contactId
-  );
-  txn.commit();
+  m_executor->ExecuteModify(query, {ownerId, contactId});
 }
 
 } // namespace msngr::profile::repository

@@ -11,6 +11,7 @@
 #include "profile_service/repository/favoritesRepository.hpp"
 #include "profile_service/repository/notificationsRepository.hpp"
 #include "profile_service/repository/minio_storage.hpp"
+#include "profile_service/repository/query_executor.hpp"
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
@@ -30,22 +31,30 @@ namespace msngr::profile {
 
 class Server::Impl {
 public:
-  Impl(std::shared_ptr<repository::IDatabaseConnection> db_conn, const Endpoint& endpoint)
-  : m_endpoint(endpoint),
-    m_db_conn(std::move(db_conn))
+  Impl(const Endpoint& endpoint)
+  : m_endpoint(endpoint)
   {
+    const char* db_url = std::getenv("DATABASE_URL");
+    if (!db_url) {
+      throw std::runtime_error("DATABASE_URL environment variable not set");
+    }
+
+    // Create database connection using the new interface
+    auto connection = std::make_unique<repository::PostgresConnection>(db_url);
+    auto queryExecutor = std::make_shared<repository::QueryExecutor>(std::move(connection));
+
     // Initialize repositories
-    m_profileRepo = std::make_shared<repository::ProfileRepositoryPostgres>(m_db_conn);
-    m_contactsRepo = std::make_shared<repository::ContactsRepositoryPostgres>(m_db_conn);
-    m_privacyRepo = std::make_shared<repository::PrivacyRepositoryPostgres>(m_db_conn);
-    m_favoriteRepo = std::make_shared<repository::FavoriteRepositoryPostgres>(m_db_conn);
-    m_notificationRepo = std::make_shared<repository::NotificationRepositoryPostgres>(m_db_conn);
+    m_profileRepo = std::make_shared<repository::ProfileRepository>(queryExecutor);
+    m_contactsRepo = std::make_shared<repository::ContactsRepository>(queryExecutor);
+    m_privacyRepo = std::make_shared<repository::PrivacyRepository>(queryExecutor);
+    m_favoriteRepo = std::make_shared<repository::FavoriteRepository>(queryExecutor);
+    m_notificationRepo = std::make_shared<repository::NotificationRepository>(queryExecutor);
 
     // Initialize MinIO storage (from env)
     auto minioEndpoint = std::getenv("MINIO_ENDPOINT") ? std::getenv("MINIO_ENDPOINT") : "localhost:9000";
     auto minioAccess = std::getenv("MINIO_ACCESS_KEY") ? std::getenv("MINIO_ACCESS_KEY") : "";
     auto minioSecret = std::getenv("MINIO_SECRET_KEY") ? std::getenv("MINIO_SECRET_KEY") : "";
-    m_avatarStorage = std::make_shared<repository::MinIOStorage>(minio_endpoint, minio_access, minio_secret);
+    m_avatarStorage = std::make_shared<repository::MinIOStorage>(minioEndpoint, minioAccess, minioSecret);
 
     // Initialize handler factory
     m_handlerFactory = std::make_shared<handlers::HandlerFactory>(
@@ -164,11 +173,11 @@ private:
   Endpoint m_endpoint;
   std::shared_ptr<repository::IDatabaseConnection> m_dbConn;
 
-  std::shared_ptr<repository::ProfileRepositoryPostgres> m_profileRepo;
-  std::shared_ptr<repository::ContactsRepositoryPostgres> m_contactsRepo;
-  std::shared_ptr<repository::PrivacyRepositoryPostgres> m_privacyRepo;
-  std::shared_ptr<repository::FavoriteRepositoryPostgres> m_favoriteRepo;
-  std::shared_ptr<repository::NotificationRepositoryPostgres> m_notificationRepo;
+  std::shared_ptr<repository::ProfileRepository> m_profileRepo;
+  std::shared_ptr<repository::ContactsRepository> m_contactsRepo;
+  std::shared_ptr<repository::PrivacyRepository> m_privacyRepo;
+  std::shared_ptr<repository::FavoriteRepository> m_favoriteRepo;
+  std::shared_ptr<repository::NotificationRepository> m_notificationRepo;
   std::shared_ptr<repository::MinIOStorage> m_avatarStorage;
 
   std::shared_ptr<handlers::HandlerFactory> m_handlerFactory;
@@ -177,9 +186,9 @@ private:
   std::unordered_map<std::string, std::unordered_map<beast_http::verb, HandlerInfo>> m_routeMap;
 };
 
-Server::Server(std::shared_ptr<repository::IDatabaseConnection> dbConnection, Endpoint endpoint)
-  : m_repository(std::move(dbConnection)), m_endpoint(std::move(endpoint)) {
-  m_impl = std::make_unique<Impl>(m_Repository, m_endpoint);
+Server::Server(Endpoint endpoint)
+  : m_endpoint(std::move(endpoint)) {
+  m_impl = std::make_unique<Impl>(m_endpoint);
 }
 
 Server::~Server() {

@@ -1,49 +1,43 @@
-#include "profile_service/repository/favorites_repository.hpp"
+#include "favorites_repository.hpp"
+#include "mappers.hpp"
+#include <vector>
 
 namespace msngr::profile::repository {
 
-FavoriteRepositoryPostgres::FavoriteRepositoryPostgres(std::shared_ptr<IDatabaseConnection> conn)
-    : m_connection(std::move(conn)) {}
+FavoriteRepository::FavoriteRepository(std::shared_ptr<QueryExecutor> executor)
+    : m_executor(std::move(executor)) {}
 
-std::vector<domain::Favorite> FavoriteRepositoryPostgres::List(const std::string & userId) {
-  pqxx::work txn(m_connection->Connection());
-
-  auto result = txn.exec_params(
+std::vector<domain::Favorite> FavoriteRepository::List(const std::string & userId) {
+  const std::string query = 
     "SELECT user_id, chat_id, created_at FROM favorites "
-    "WHERE user_id = $1 ORDER BY created_at DESC",
-    userId
-  );
- 
+    "WHERE user_id = $1 ORDER BY created_at DESC";
+  
+  auto result = m_executor->ExecuteSelect(query, {userId});
+  
   std::vector<domain::Favorite> favorites;
-  for (const auto & row : result) {
-    domain::Favorite fav;
-    fav.UserID = row["user_id"].as<std::string>();
-    fav.ChatID = row["chat_id"].as<std::string>();
-    favorites.push_back(fav);
+  if (result && !result->Empty()) {
+    for (size_t i = 0; i < result->Size(); ++i) {
+      auto row = result->GetRow(i);
+      favorites.push_back(FavoriteMapper::MapRow(row.get()));
+    }
   }
 
   return favorites;
 }
 
-void FavoriteRepositoryPostgres::Add(const std::string & userId, const std::string & chatId) {
-  pqxx::work txn(m_connection->Connection());
-
-  txn.exec_params(
+void FavoriteRepository::Add(const std::string & userId, const std::string & chatId) {
+  const std::string query =
     "INSERT INTO favorites (user_id, chat_id) VALUES ($1, $2) "
-    "ON CONFLICT (user_id, chat_id) DO NOTHING",
-    userId, chatId
-  );
-  txn.commit();
+    "ON CONFLICT (user_id, chat_id) DO NOTHING";
+  
+  m_executor->ExecuteModify(query, {userId, chatId});
 }
 
-void FavoriteRepositoryPostgres::Remove(const std::string & userId, const std::string & chatId) {
-  pqxx::work txn(m_connection->Connection());
-
-  txn.exec_params(
-    "DELETE FROM favorites WHERE user_id = $1 AND chat_id = $2",
-    userId, chatId
-  );
-  txn.commit();
+void FavoriteRepository::Remove(const std::string & userId, const std::string & chatId) {
+  const std::string query =
+    "DELETE FROM favorites WHERE user_id = $1 AND chat_id = $2";
+  
+  m_executor->ExecuteModify(query, {userId, chatId});
 }
 
 } // namespace msngr::profile::repository

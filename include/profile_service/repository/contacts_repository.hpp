@@ -1,24 +1,23 @@
 #ifndef MSNGR__PROFILE__REPOSITORY__CONTACTS_REPOSITORY_HPP_
 #define MSNGR__PROFILE__REPOSITORY__CONTACTS_REPOSITORY_HPP_
 
-#include "profile_service/repository/repository.hpp"
 #include "profile_service/domain/models.hpp"
-#include "profile_service/repository/db_connection.hpp"
+#include "profile_service/repository/query_executor.hpp"
 #include <memory>
 #include <vector>
 
 namespace msngr::profile::repository {
 
-class ContactsRepositoryPostgres : public ContactsRepository {
+class ContactsRepository {
 public:
-  explicit ContactsRepositoryPostgres(std::shared_ptr<IDatabaseConnection> conn);
+  explicit ContactsRepository(std::shared_ptr<QueryExecutor> executor);
 
-  std::vector<domain::Contact> List(const std::string & ownerId) override;
-  void Add(const domain::Contact & contact) override;
-  void Remove(const std::string & ownerId, const std::string & contactId) override;
+  std::vector<domain::Contact> List(const std::string & ownerId);
+  void Add(const domain::Contact & contact);
+  void Remove(const std::string & ownerId, const std::string & contactId);
 
 private:
-  std::shared_ptr<IDatabaseConnection> m_connection;
+  std::shared_ptr<QueryExecutor> m_executor;
 };
 
 } // namespace msngr::profile::repository

@@ -1,24 +1,23 @@
 #ifndef MSNGR__PROFILE__REPOSITORY__FAVORITES_REPOSITORY_HPP_
 #define MSNGR__PROFILE__REPOSITORY__FAVORITES_REPOSITORY_HPP_
 
-#include "profile_service/repository/repository.hpp"
 #include "profile_service/domain/models.hpp"
-#include "profile_service/repository/db_connection.hpp"
+#include "profile_service/repository/query_executor.hpp"
 #include <memory>
 #include <vector>
 
 namespace msngr::profile::repository {
 
-class FavoriteRepositoryPostgres : public FavoriteRepository {
+class FavoriteRepository {
 public:
-  explicit FavoriteRepositoryPostgres(std::shared_ptr<IDatabaseConnection> conn);
+  explicit FavoriteRepository(std::shared_ptr<QueryExecutor> executor);
 
-  std::vector<domain::Favorite> List(const std::string & userId) override;
-  void Add(const std::string & userId, const std::string & chatId) override;
-  void Remove(const std::string & userId, const std::string & chatId) override;
+  std::vector<domain::Favorite> List(const std::string & userId);
+  void Add(const std::string & userId, const std::string & chatId);
+  void Remove(const std::string & userId, const std::string & chatId);
 
 private:
-  std::shared_ptr<IDatabaseConnection> m_connection;
+  std::shared_ptr<QueryExecutor> m_executor;
 };
 
 } // namespace msngr::profile::repository

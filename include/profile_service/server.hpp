@@ -1,8 +1,6 @@
 #ifndef MSNGR__PROFILE__SERVER_HPP_
 #define MSNGR__PROFILE__SERVER_HPP_
 
-#include "profile_service/repository/db_connection.hpp"
-
 #include <memory>
 #include <string>
 #include <atomic>
@@ -18,7 +16,7 @@ struct Endpoint {
 
 class Server {
 public:
-  Server(std::shared_ptr<repository::IDatabaseConnection> dbConnection, Endpoint endpoint);
+  explicit Server(Endpoint endpoint);
   ~Server();
 
   bool Start();
@@ -27,7 +25,6 @@ public:
 private:
   class Impl;
   std::unique_ptr<Impl> m_impl;
-  std::shared_ptr<repository::IDatabaseConnection> m_repository;
   Endpoint m_endpoint;
   std::atomic<bool> m_running{false};
   std::jthread m_thread;
