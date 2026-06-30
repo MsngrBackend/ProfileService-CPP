@@ -6,11 +6,11 @@ namespace msngr::profile {
 const ApiSpec & GetApiSpec() {
   static const ApiSpec spec = []() {
     ApiSpec s;
-    s.version = "v1";
+    s.Version = "v1";
 
     // Helper to add route
     auto addRoute = [&](const std::string & path, beast_http::verb method, HandlerId id, const std::string & scope) {
-      s.flatRoutes[path + ":" + std::to_string(static_cast<int>(method))] = {method, id, scope};
+      s.FlatRoutes[path + ":" + std::to_string(static_cast<int>(method))] = {method, id, scope};
     };
 
     addRoute("/internal/profiles", beast_http::verb::post, HandlerId::CreateProfile, "profile:write");
@@ -41,8 +41,8 @@ const ApiSpec & GetApiSpec() {
     addRoute("/notifications/{chat_id}", beast_http::verb::put, HandlerId::UpdateChatNotifications, "notifications:write");
 
     // Build route tree
-    s.routeTree.segment = "";
-    s.routeTree.hasParam = false;
+    s.RouteTree.Segment = "";
+    s.RouteTree.HasParam = false;
 
     // for (const auto& [key, info] : s.flatRoutes) {
     //     // Parse path and build tree (simplified - full implementation would parse path segments)

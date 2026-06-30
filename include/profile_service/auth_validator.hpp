@@ -12,17 +12,19 @@ namespace msngr::profile{
 class IAuthChecker {
 public:
   virtual ~IAuthChecker() = default;
-  virtual bool Check(const std::string& user_id, const std::string& scope) = 0;
+  virtual bool Check(const std::string& userId, const std::string& scope) = 0;
 };
 
 class SimpleAuthChecker : public IAuthChecker {
 public:
-  bool Check(const std::string & user_id, const std::string & scope) override {
-    return !user_id.empty();
+  bool Check(const std::string & userId, const std::string & scope) override
+  {
+    return !userId.empty();
   }
 };
 
-inline std::string ExtractUserID(const beast_http::request<beast_http::string_body>& request) {
+inline std::string ExtractUserID(const beast_http::request<beast_http::string_body> & request)
+{
   auto it = request.find("X-User-ID");
   if (it != request.end()) {
     return std::string(it->value());

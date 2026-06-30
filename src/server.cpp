@@ -5,13 +5,12 @@
 
 #include "api_spec.hpp"
 #include "handlers/handler_factory.hpp"
-#include "repository/profile_repository.hpp"
-#include "repository/contacts_repository.hpp"
-#include "repository/privacy_repository.hpp"
-#include "repository/favorites_repository.hpp"
-#include "repository/notifications_repository.hpp"
-#include "repository/minio_storage.hpp"
-
+#include "profile_service/repository/profileRepository.hpp"
+#include "profile_service/repository/contactsRepository.hpp"
+#include "profile_service/repository/privacyRepository.hpp"
+#include "profile_service/repository/favoritesRepository.hpp"
+#include "profile_service/repository/notificationsRepository.hpp"
+#include "profile_service/repository/minio_storage.hpp"
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/beast/core.hpp>
@@ -31,36 +30,36 @@ namespace msngr::profile {
 
 class Server::Impl {
 public:
-  Impl(std::shared_ptr<pqxx::connection> db_conn, const Endpoint& endpoint)
+  Impl(std::shared_ptr<repository::IDatabaseConnection> db_conn, const Endpoint& endpoint)
   : m_endpoint(endpoint),
     m_db_conn(std::move(db_conn))
   {
     // Initialize repositories
-    m_profile_repo = std::make_shared<repository::ProfileRepositoryPostgres>(m_db_conn);
-    m_contacts_repo = std::make_shared<repository::ContactsRepositoryPostgres>(m_db_conn);
-    m_privacy_repo = std::make_shared<repository::PrivacyRepositoryPostgres>(m_db_conn);
-    m_favorite_repo = std::make_shared<repository::FavoriteRepositoryPostgres>(m_db_conn);
-    m_notification_repo = std::make_shared<repository::NotificationRepositoryPostgres>(m_db_conn);
+    m_profileRepo = std::make_shared<repository::ProfileRepositoryPostgres>(m_db_conn);
+    m_contactsRepo = std::make_shared<repository::ContactsRepositoryPostgres>(m_db_conn);
+    m_privacyRepo = std::make_shared<repository::PrivacyRepositoryPostgres>(m_db_conn);
+    m_favoriteRepo = std::make_shared<repository::FavoriteRepositoryPostgres>(m_db_conn);
+    m_notificationRepo = std::make_shared<repository::NotificationRepositoryPostgres>(m_db_conn);
 
     // Initialize MinIO storage (from env)
-    auto minio_endpoint = std::getenv("MINIO_ENDPOINT") ? std::getenv("MINIO_ENDPOINT") : "localhost:9000";
-    auto minio_access = std::getenv("MINIO_ACCESS_KEY") ? std::getenv("MINIO_ACCESS_KEY") : "";
-    auto minio_secret = std::getenv("MINIO_SECRET_KEY") ? std::getenv("MINIO_SECRET_KEY") : "";
-    m_avatar_storage = std::make_shared<repository::MinIOStorage>(minio_endpoint, minio_access, minio_secret);
+    auto minioEndpoint = std::getenv("MINIO_ENDPOINT") ? std::getenv("MINIO_ENDPOINT") : "localhost:9000";
+    auto minioAccess = std::getenv("MINIO_ACCESS_KEY") ? std::getenv("MINIO_ACCESS_KEY") : "";
+    auto minioSecret = std::getenv("MINIO_SECRET_KEY") ? std::getenv("MINIO_SECRET_KEY") : "";
+    m_avatarStorage = std::make_shared<repository::MinIOStorage>(minio_endpoint, minio_access, minio_secret);
 
     // Initialize handler factory
-    m_handler_factory = std::make_shared<handlers::HandlerFactory>(
-      m_profile_repo, m_contacts_repo, m_privacy_repo,
-      m_favorite_repo, m_notification_repo, m_avatar_storage
+    m_handlerFactory = std::make_shared<handlers::HandlerFactory>(
+      m_profileRepo, m_contactsRepo, m_privacyRepo,
+      m_favoriteRepo, m_notificationRepo, m_avatarStorage
     );
 
-    m_auth_checker = std::make_shared<SimpleAuthChecker>();
+    m_authChecker = std::make_shared<SimpleAuthChecker>();
 
     BuildRouteMap();
   }
 
   beast_http::response<beast_http::string_body> Handle(
-    const beast_http::request<beast_http::string_body>& request) 
+    const beast_http::request<beast_http::string_body>& request)
   {
     auto method = request.method();
     auto target = std::string(request.target());
@@ -74,26 +73,26 @@ public:
       LOG(error) << "Route not found: " << request.method_string() << " " << target;
       return handlers::ErrorResponse(404, request.version(), "route_not_found");
     }
-    const auto& handler_info = *route_info;
+    const auto& handlerInfo = *route_info;
 
-    std::string user_id = ExtractUserID(request);
-    const bool is_internal_create_profile =
+    std::string userID = ExtractUserID(request);
+    const bool is_internalCreateProfile =
       method == beast_http::verb::post && target == "/internal/profiles";
 
-    if (!is_internal_create_profile) {
-      if (user_id.empty()) {
+    if (!is_internalCreateProfile) {
+      if (userID.empty()) {
         LOG(error) << "Missing X-User-ID header";
         return handlers::ErrorResponse(401, request.version(), "missing X-User-ID");
       }
 
-      if (!m_auth_checker->Check(user_id, handler_info.scope)) {
+      if (!m_authChecker->Check(userID, handlerInfo.scope)) {
         LOG(error) << "Auth failed: " << request.method_string() << " " << target;
         return handlers::ErrorResponse(403, request.version(), "auth_failed");
       }
     }
 
     handlers::RouteContext ctx;
-    ctx.UserID = user_id;
+    ctx.UserID = userID;
 
     if (target.find("/contacts/") == 0 && target != "/contacts") {
       ctx.PathParams["contact_id"] = target.substr(10);
@@ -105,7 +104,7 @@ public:
       ctx.PathParams["user_id"] = target.substr(1);
     }
 
-    auto handler = m_handler_factory->Bind(handler_info.id);
+    auto handler = m_handlerFactory->Bind(handlerInfo.id);
     return handler(request, ctx);
   }
 
@@ -163,25 +162,24 @@ private:
   }
 
   Endpoint m_endpoint;
-  std::shared_ptr<pqxx::connection> m_db_conn;
+  std::shared_ptr<repository::IDatabaseConnection> m_dbConn;
 
-  std::shared_ptr<repository::ProfileRepositoryPostgres> m_profile_repo;
-  std::shared_ptr<repository::ContactsRepositoryPostgres> m_contacts_repo;
-  std::shared_ptr<repository::PrivacyRepositoryPostgres> m_privacy_repo;
-  std::shared_ptr<repository::FavoriteRepositoryPostgres> m_favorite_repo;
-  std::shared_ptr<repository::NotificationRepositoryPostgres> m_notification_repo;
-  std::shared_ptr<repository::MinIOStorage> m_avatar_storage;
+  std::shared_ptr<repository::ProfileRepositoryPostgres> m_profileRepo;
+  std::shared_ptr<repository::ContactsRepositoryPostgres> m_contactsRepo;
+  std::shared_ptr<repository::PrivacyRepositoryPostgres> m_privacyRepo;
+  std::shared_ptr<repository::FavoriteRepositoryPostgres> m_favoriteRepo;
+  std::shared_ptr<repository::NotificationRepositoryPostgres> m_notificationRepo;
+  std::shared_ptr<repository::MinIOStorage> m_avatarStorage;
 
-  std::shared_ptr<handlers::HandlerFactory> m_handler_factory;
-  std::shared_ptr<IAuthChecker> m_auth_checker;
+  std::shared_ptr<handlers::HandlerFactory> m_handlerFactory;
+  std::shared_ptr<IAuthChecker> m_authChecker;
 
-  std::unordered_map<std::string, std::unordered_map<beast_http::verb, HandlerInfo>> m_route_map;
+  std::unordered_map<std::string, std::unordered_map<beast_http::verb, HandlerInfo>> m_routeMap;
 };
 
-Server::Server(std::shared_ptr<void> repository, Endpoint endpoint)
-  : m_repository(std::move(repository)), m_endpoint(std::move(endpoint)) {
-  auto db_conn = std::static_pointer_cast<pqxx::connection>(m_repository);
-  m_impl = std::make_unique<Impl>(db_conn, m_endpoint);
+Server::Server(std::shared_ptr<repository::IDatabaseConnection> dbConnection, Endpoint endpoint)
+  : m_repository(std::move(dbConnection)), m_endpoint(std::move(endpoint)) {
+  m_impl = std::make_unique<Impl>(m_Repository, m_endpoint);
 }
 
 Server::~Server() {

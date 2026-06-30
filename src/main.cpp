@@ -1,10 +1,10 @@
 #include <signal.h>
 #include <pthread.h>
-#include "server.hpp"
+#include "profile_service/server.hpp"
 #include "utils/logger.hpp"
+#include "profile_service/repository/db_connection.hpp"
 
 #include <boost/program_options.hpp>
-#include <pqxx/pqxx>
 #include <csignal>
 #include <cstdlib>
 #include <memory>
@@ -40,8 +40,8 @@ int main(int argc, char** argv) {
     }
 
     // Initialize database connection
-    auto db_conn = std::make_shared<pqxx::connection>(db_url);
-    if (!db_conn->is_open()) {
+    auto db_conn = std::make_shared<msngr::profile::repository::PostgresSQLConnection>(db_url);
+    if (!db_conn->IsOpen()) {
       LOG(error) << "Failed to connect to database";
       return 1;
     }

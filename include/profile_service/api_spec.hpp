@@ -20,27 +20,27 @@ namespace msngr::profile {
 	};
 
 	struct HandlerInfo {
-		beast_http::verb method;
-		HandlerId id;
-		std::string scope;
+		beast_http::verb Method;
+		HandlerId Id;
+		std::string Scope;
 	};
 
 	struct RouteNode {
-		std::string segment;
-		std::unordered_map<beast_http::verb, HandlerInfo> handlers;
-		std::vector<std::unique_ptr<RouteNode>> children;
-		std::unordered_map<std::string, std::unique_ptr<RouteNode>> paramChildren;
-		bool hasParam = false;
-		std::string paramName;
+		std::string Segment;
+		std::unordered_map<beast_http::verb, HandlerInfo> Handlers;
+		std::vector<std::unique_ptr<RouteNode>> Children;
+		std::unordered_map<std::string, std::unique_ptr<RouteNode>> ParamChildren;
+		bool HasParam = false;
+		std::string ParamName;
 	};
 
 	struct ApiSpec {
-		std::string version;
-		std::unordered_map<std::string, HandlerInfo> flatRoutes;
-		RouteNode routeTree;
+		std::string Version;
+		std::unordered_map<std::string, HandlerInfo> FlatRoutes;
+		RouteNode RouteTree;
 	};
 
-	const ApiSpec& GetApiSpec();
+	const ApiSpec & GetApiSpec();
 
 } // namespace msngr::profile
 

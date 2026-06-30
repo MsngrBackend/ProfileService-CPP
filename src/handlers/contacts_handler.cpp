@@ -29,7 +29,7 @@ namespace msngr::profile::handlers {
         try {
             auto contacts = m_contactsRepo->List(context.UserID);
             json response = json::array();
-            for (const auto& contact : contacts) {
+            for (const auto & contact : contacts) {
                 json item;
                 item["owner_id"] = contact.OwnerID;
                 item["contact_id"] = contact.ContactID;

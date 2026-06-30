@@ -14,15 +14,15 @@ namespace msngr::profile::handlers {
 class HandlerFactory {
 public:
   HandlerFactory(
-    std::shared_ptr<repository::ProfileRepository> profile_repo,
-    std::shared_ptr<repository::ContactsRepository> contacts_repo,
-    std::shared_ptr<repository::PrivacyRepository> privacy_repo,
-    std::shared_ptr<repository::FavoriteRepository> favorite_repo,
-    std::shared_ptr<repository::NotificationRepository> notification_repo,
+    std::shared_ptr<repository::ProfileRepository> profileRepo,
+    std::shared_ptr<repository::ContactsRepository> contactsRepo,
+    std::shared_ptr<repository::PrivacyRepository> privacyRepo,
+    std::shared_ptr<repository::FavoriteRepository> favoriteRepo,
+    std::shared_ptr<repository::NotificationRepository> notificationRepo,
     std::shared_ptr<repository::AvatarStorage> avatar_storage
   );
 
-  std::function<HttpResponse(const HttpRequest&, const RouteContext &)> Bind(HandlerId id);
+  std::function<HttpResponse(const HttpRequest &, const RouteContext &)> Bind(HandlerId id);
 
 private:
   std::unordered_map<HandlerId, std::shared_ptr<IHandler>> m_handlers;
