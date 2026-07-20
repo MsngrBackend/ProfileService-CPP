@@ -14,6 +14,8 @@ struct Endpoint {
   uint16_t Port = 8082;
 };
 
+class ServerImpl;
+
 class Server {
 public:
   explicit Server(Endpoint endpoint);
@@ -23,8 +25,7 @@ public:
   void Stop();
 
 private:
-  class Impl;
-  std::unique_ptr<Impl> m_impl;
+  std::unique_ptr<ServerImpl> m_impl;
   Endpoint m_endpoint;
   std::atomic<bool> m_running{false};
   std::jthread m_thread;

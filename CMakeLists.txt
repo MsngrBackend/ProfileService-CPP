@@ -19,6 +19,9 @@ pkg_check_modules(PQXX REQUIRED IMPORTED_TARGET libpqxx)
 set(SOURCES
   src/main.cpp
   src/server.cpp
+  src/server_impl.cpp
+  src/request_manager.cpp
+  src/query_manager.cpp
   src/api_spec.cpp
   src/handlers/profile_handler.cpp
   src/handlers/contacts_handler.cpp
