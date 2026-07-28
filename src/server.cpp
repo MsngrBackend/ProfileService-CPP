@@ -22,7 +22,8 @@ Server::~Server() {
   Stop();
 }
 
-bool Server::Start() {
+bool Server::Start()
+{
   if (m_running.exchange(true)) {
     LOG(error) << "Server::Start called while already running";
     return false;

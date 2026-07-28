@@ -43,11 +43,12 @@ domain::NotificationSettings NotificationRepository::Get(
   return settings;
 }
 
-void NotificationRepository::Upsert(const domain::NotificationSettings& settings) {
+void NotificationRepository::Upsert(const domain::NotificationSettings & settings)
+{
   std::string query;
   std::vector<DBValue> params = {
-    settings.UserID, 
-    settings.ChatID.value_or(""), 
+    settings.UserID,
+    settings.ChatID.value_or(""),
     settings.Muted
   };
 

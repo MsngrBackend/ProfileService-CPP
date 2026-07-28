@@ -155,7 +155,7 @@ HttpResponse NotificationsHandler::HandleUpdateChatNotifications(const HttpReque
     m_notificationRepo->Upsert(settings);
 
     return JsonResponse(204, request.version(), "");
-  } catch (const std::exception& e) {
+  } catch (const std::exception & e) {
     return ErrorResponse(400, request.version(), e.what());
   }
 }

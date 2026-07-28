@@ -31,8 +31,8 @@ void ContactsRepository::Add(const domain::Contact & contact) {
     "ON CONFLICT (owner_id, contact_id) DO UPDATE SET alias = $3";
 
   m_executor->ExecuteModify(query, {
-    contact.OwnerID, 
-    contact.ContactID, 
+    contact.OwnerID,
+    contact.ContactID,
     contact.Alias.value_or("")
   });
 }

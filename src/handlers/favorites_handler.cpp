@@ -7,9 +7,9 @@ namespace msngr::profile::handlers {
 using json = nlohmann::json;
 
 FavoritesHandler::FavoritesHandler(std::shared_ptr<repository::FavoriteRepository> favoriteRepo)
-    : m_favoritesRepo(std::move(favoriteRepo)) {}
+  : m_favoritesRepo(std::move(favoriteRepo)) {}
 
-HttpResponse FavoritesHandler::Handle(const HttpRequest& request, const RouteContext& context) {
+HttpResponse FavoritesHandler::Handle(const HttpRequest & request, const RouteContext & context) {
 	auto method = request.method();
 	auto target = std::string(request.target());
 
@@ -24,12 +24,12 @@ HttpResponse FavoritesHandler::Handle(const HttpRequest& request, const RouteCon
 	return ErrorResponse(404, request.version(), "not_found");
 }
 
-HttpResponse FavoritesHandler::HandleGetFavorites(const HttpRequest& request, const RouteContext& context) {
+HttpResponse FavoritesHandler::HandleGetFavorites(const HttpRequest & request, const RouteContext & context) {
 	try {
 		auto favorites = m_favoritesRepo->List(context.UserID);
 		json response = json::array();
 
-		for (const auto& fav : favorites) {
+		for (const auto & fav : favorites) {
 			response.push_back({
 				{"user_id", fav.UserID},
 				{"chat_id", fav.ChatID},
@@ -38,7 +38,7 @@ HttpResponse FavoritesHandler::HandleGetFavorites(const HttpRequest& request, co
 		}
 
 		return JsonResponse(200, request.version(), response.dump());
-	} catch (const std::exception& e) {
+	} catch (const std::exception & e) {
 		return ErrorResponse(500, request.version(), "failed to get favorites");
 	}
 }
@@ -57,7 +57,7 @@ HttpResponse FavoritesHandler::HandleAddFavorite(const HttpRequest & request, co
 	}
 }
 
-HttpResponse FavoritesHandler::HandleRemoveFavorite(const HttpRequest& request, const RouteContext& context) {
+HttpResponse FavoritesHandler::HandleRemoveFavorite(const HttpRequest & request, const RouteContext & context) {
 	try {
 		auto it = context.PathParams.find("chat_id");
 		if (it == context.PathParams.end()) {

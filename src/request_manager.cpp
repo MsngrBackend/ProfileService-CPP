@@ -110,7 +110,7 @@ std::optional<HandlerInfo> RequestManager::ResolveRoute(
 void RequestManager::BuildRouteMap() {
   const auto& spec = GetApiSpec();
 
-  for (const auto& [key, info] : spec.FlatRoutes) {
+  for (const auto & [key, info] : spec.FlatRoutes) {
     size_t colonPos = key.find(':');
     if (colonPos != std::string::npos) {
       std::string path = key.substr(0, colonPos);
@@ -120,7 +120,8 @@ void RequestManager::BuildRouteMap() {
 }
 
 std::string RequestManager::ExtractUserID(
-  const beast_http::request<beast_http::string_body> & request) const {
+  const beast_http::request<beast_http::string_body> & request) const
+{
   auto userIdHeader = request.find("X-User-ID");
   if (userIdHeader == request.end()) {
     return "";
@@ -129,8 +130,9 @@ std::string RequestManager::ExtractUserID(
 }
 
 void RequestManager::ExtractPathParams(
-  const std::string& target,
-  handlers::RouteContext& ctx) const {
+  const std::string & target,
+  handlers::RouteContext & ctx) const
+{
   if (target.find("/contacts/") == 0 && target != "/contacts") {
     ctx.PathParams["contact_id"] = target.substr(10);
   } else if (target.find("/favorites/") == 0) {
@@ -146,7 +148,8 @@ bool RequestManager::AuthorizeRequest(
   const std::string & target,
   beast_http::verb method,
   const std::string & userID,
-  const HandlerInfo & handlerInfo) const {
+  const HandlerInfo & handlerInfo) const
+{
   return m_authChecker->Check(userID, handlerInfo.Scope);
 }
 

@@ -52,7 +52,7 @@ HttpResponse PrivacyHandler::HandleUpdatePrivacy(const HttpRequest & request, co
     m_privacyRepo->Update(settings);
 
     return JsonResponse(204, request.version(), "");
-  } catch (const std::exception& e) {
+  } catch (const std::exception & e) {
     return ErrorResponse(500, request.version(), "update failed");
   }
 }
