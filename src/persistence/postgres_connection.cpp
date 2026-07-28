@@ -240,7 +240,7 @@ void PostgresTransaction::Rollback()
   }
 }
 
-PostgresConnection::PostgresConnection(const std::strin& connectionString)
+PostgresConnection::PostgresConnection(const std::string & connectionString)
 {
   try {
     m_connection = std::make_unique<pqxx::connection>(connectionString);

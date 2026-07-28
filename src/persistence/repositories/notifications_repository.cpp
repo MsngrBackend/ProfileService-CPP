@@ -39,6 +39,7 @@ domain::NotificationSettings NotificationRepository::Get(
       settings.ChatID = *chatId;
     }
   } else {
+    auto row = result->GetRow(0);
     auto rSs = NotificationMapper::MapRow(row.get());
   }
 
