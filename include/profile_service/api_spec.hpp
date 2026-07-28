@@ -2,8 +2,8 @@
 #define MSNGR__PROFILE__API_SPEC_HPP_
 
 #include <boost/beast/http.hpp>
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <memory>
 
@@ -11,37 +11,49 @@ namespace beast_http = boost::beast::http;
 
 namespace msngr::profile {
 
-	enum class HandlerId {
-		CreateProfile, GetMyProfile, GetProfileByID, UpdateProfile, UploadAvatar, DeleteAvatar,
-		GetContacts, AddContact, DeleteContact,
-		GetPrivacy, UpdatePrivacy,
-		GetFavorites, AddFavorite, RemoveFavorite,
-		GetNotifications, GetChatNotifications, UpdateNotifications, UpdateChatNotifications
-	};
+enum class HandlerId {
+  // Profile operations
+  CreateProfile,
+  GetMyProfile,
+  GetProfileByID,
+  UpdateProfile,
+  UploadAvatar,
+  DeleteAvatar,
 
-	struct HandlerInfo {
-		beast_http::verb Method;
-		HandlerId Id;
-		std::string Scope;
-	};
+  // Contact operations
+  GetContacts,
+  AddContact,
+  DeleteContact,
 
-	struct RouteNode {
-		std::string Segment;
-		std::unordered_map<beast_http::verb, HandlerInfo> Handlers;
-		std::vector<std::unique_ptr<RouteNode>> Children;
-		std::unordered_map<std::string, std::unique_ptr<RouteNode>> ParamChildren;
-		bool HasParam = false;
-		std::string ParamName;
-	};
+  // Privacy operations
+  GetPrivacy,
+  UpdatePrivacy,
 
-	struct ApiSpec {
-		std::string Version;
-		std::unordered_map<std::string, HandlerInfo> FlatRoutes;
-		RouteNode RouteTree;
-	};
+  // Favorite operations
+  GetFavorites,
+  AddFavorite,
+  RemoveFavorite,
 
-	const ApiSpec & GetApiSpec();
+  // Notification operations
+  GetNotifications,
+  GetChatNotifications,
+  UpdateNotifications,
+  UpdateChatNotifications
+};
+
+struct HandlerInfo {
+  beast_http::verb Method;
+  HandlerId Id;              // This is the handler ID
+  std::string Scope;
+};
+
+struct ApiSpec {
+  std::string Version;
+  std::unordered_map<std::string, HandlerInfo> FlatRoutes;
+};
+
+const ApiSpec& GetApiSpec();
 
 } // namespace msngr::profile
 
-#endif
+#endif // MSNGR__PROFILE__API_SPEC_HPP_

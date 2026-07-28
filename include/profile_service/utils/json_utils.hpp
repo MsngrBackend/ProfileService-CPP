@@ -1,7 +1,6 @@
 #ifndef MSNGR__PROFILE__UTILS__JSON_UTILS_HPP_
 #define MSNGR__PROFILE__UTILS__JSON_UTILS_HPP_
 
-#include <nlohmann/json.hpp>
 #include <chrono>
 #include <cstdint>
 #include <iomanip>
@@ -19,7 +18,7 @@ inline std::chrono::system_clock::time_point ParseTimestamp(const std::string & 
   std::istringstream ss(timestamp);
   ss >> std::get_time(&tm, "%Y-%m-%dT%H:%M:%S");
   if (ss.fail()) {
-      throw std::runtime_error("Invalid timestamp format");
+    throw std::runtime_error("Invalid timestamp format");
   }
   return std::chrono::system_clock::from_time_t(std::mktime(&tm));
 }
@@ -32,15 +31,6 @@ inline std::string FormatTimestamp(const std::chrono::system_clock::time_point &
   std::ostringstream ss;
   ss << std::put_time(&tm, "%Y-%m-%dT%H:%M:%SZ");
   return ss.str();
-}
-
-template <typename T>
-inline nlohmann::json OptionalToJson(const std::optional<T> & value)
-{
-  if (value.has_value()) {
-    return *value;
-  }
-  return nullptr;
 }
 
 inline std::vector<uint8_t> DecodeBase64(const std::string & encoded)
@@ -58,7 +48,7 @@ inline std::vector<uint8_t> DecodeBase64(const std::string & encoded)
       continue;
     }
 
-    val = (val << 6) + pos;
+    val = (val << 6) + static_cast<int>(pos);
     valb += 6;
     if (valb >= 0) {
       decoded.push_back((val >> valb) & 0xFF);
@@ -71,4 +61,4 @@ inline std::vector<uint8_t> DecodeBase64(const std::string & encoded)
 
 } // namespace msngr::profile::utils
 
-#endif  // MSNGR__PROFILE__UTILS__JSON_UTILS_HPP_
+#endif // MSNGR__PROFILE__UTILS__JSON_UTILS_HPP_

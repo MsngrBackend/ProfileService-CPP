@@ -1,10 +1,9 @@
 #ifndef MSNGR__PROFILE__DOMAIN__MODELS_HPP_
 #define MSNGR__PROFILE__DOMAIN__MODELS_HPP_
 
-#include <string>
-#include <optional>
 #include <chrono>
-#include <vector>
+#include <optional>
+#include <string>
 
 namespace msngr::profile::domain {
 
@@ -38,7 +37,7 @@ struct NotificationSettings {
   std::string ID;
   std::string UserID;
   std::optional<std::string> ChatID;
-  bool Muted;
+  bool Muted = false;
   std::optional<std::chrono::system_clock::time_point> MutedUntil;
 };
 
@@ -50,4 +49,4 @@ struct Favorite {
 
 } // namespace msngr::profile::domain
 
-#endif  // MSNGR__PROFILE__DOMAIN__MODELS_HPP_
+#endif // MSNGR__PROFILE__DOMAIN__MODELS_HPP_

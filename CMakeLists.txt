@@ -1,66 +1,86 @@
-cmake_minimum_required(VERSION 3.20)
-project(ProfileService VERSION 1.0.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.14)
+project(profile_service VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Find packages
-find_package(Boost REQUIRED COMPONENTS system program_options log log_setup thread filesystem)
-find_package(Threads REQUIRED)
-find_package(PkgConfig REQUIRED)
-find_package(PostgreSQL REQUIRED)
-find_package(nlohmann_json REQUIRED)
+# Find required packages
+find_package(Boost REQUIRED COMPONENTS 
+    system 
+    thread 
+    log 
+    log_setup
+    program_options
+)
 
-# For libpqxx
-pkg_check_modules(PQXX REQUIRED IMPORTED_TARGET libpqxx)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PQXX REQUIRED libpqxx)
+find_package(nlohmann_json REQUIRED)
 
 # Source files
 set(SOURCES
-  src/main.cpp
-  src/server.cpp
-  src/server_impl.cpp
-  src/request_manager.cpp
-  src/query_manager.cpp
-  src/api_spec.cpp
-  src/handlers/profile_handler.cpp
-  src/handlers/contacts_handler.cpp
-  src/handlers/privacy_handler.cpp
-  src/handlers/favorites_handler.cpp
-  src/handlers/notifications_handler.cpp
-  src/handlers/handler_factory.cpp
-  src/repository/profile_repository.cpp
-  src/repository/contacts_repository.cpp
-  src/repository/privacy_repository.cpp
-  src/repository/favorites_repository.cpp
-  src/repository/notifications_repository.cpp
-  src/repository/minio_storage.cpp
+    src/main.cpp
+    src/application.cpp
+    src/api_spec.cpp
+    src/http/http_server.cpp
+    src/routing/router.cpp
+    src/auth/auth_service.cpp
+    src/services/service_factory.cpp
+    src/services/profile_service.cpp
+    src/services/contacts_service.cpp
+    src/services/privacy_service.cpp
+    src/services/favorites_service.cpp
+    src/services/notifications_service.cpp
+    src/persistence/database_manager.cpp
+    src/persistence/query_executor.cpp
+    src/persistence/postgres_connection.cpp
+    src/persistence/repositories/profile_repository.cpp
+    src/persistence/repositories/contacts_repository.cpp
+    src/persistence/repositories/privacy_repository.cpp
+    src/persistence/repositories/favorites_repository.cpp
+    src/persistence/repositories/notifications_repository.cpp
+    src/persistence/repositories/mappers.cpp
+    src/storage/storage_manager.cpp
+    src/storage/minio_storage.cpp
 )
+
+# Header directories
+include_directories(include)
 
 # Create executable
 add_executable(profile_service ${SOURCES})
 
-# Include directories
-target_include_directories(profile_service PRIVATE
-  ${CMAKE_CURRENT_SOURCE_DIR}/include
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/handlers
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/profile_service/repository
-  ${CMAKE_CURRENT_SOURCE_DIR}/src
-  ${Boost_INCLUDE_DIRS}
-)
-
 # Link libraries
 target_link_libraries(profile_service
-  ${Boost_LIBRARIES}
-  PkgConfig::PQXX
-  PostgreSQL::PostgreSQL
-  Threads::Threads
-  nlohmann_json::nlohmann_json
+    ${Boost_LIBRARIES}
+    ${PQXX_LIBRARIES}
+    nlohmann_json::nlohmann_json
+    pthread
+    boost_log
+    boost_log_setup
 )
 
-# Set compiler options
-target_compile_options(profile_service PRIVATE -Wall -Wextra -O2)
+# Compiler flags
+target_compile_options(profile_service PRIVATE
+    -Wall
+    -Wextra
+    -Wpedantic
+    -O2
+)
 
-# Install
-install(TARGETS profile_service DESTINATION bin)
+# Copy compile commands for clangd (optional)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Print summary
+message(STATUS "")
+message(STATUS "Profile Service Build Configuration:")
+message(STATUS "  C++ Standard: ${CMAKE_CXX_STANDARD}")
+message(STATUS "  Boost Include: ${Boost_INCLUDE_DIRS}")
+message(STATUS "  Boost Libraries: ${Boost_LIBRARIES}")
+message(STATUS "  PostgreSQL: ${PQXX_LIBRARIES}")
+message(STATUS "  nlohmann_json: ${nlohmann_json_INCLUDE_DIRS}")
+message(STATUS "")
+message(STATUS "Build with: make -j$(nproc)")
+message(STATUS "Run: ./profile_service --address 0.0.0.0 --port 8082")
+message(STATUS "")
