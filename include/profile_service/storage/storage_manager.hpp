@@ -13,7 +13,7 @@ struct Storage {
 
 class StorageManager {
 public:
-  StorageManager(const std::string & endpoint, const std::string & accessKey, const std::string & secretKey);
+  StorageManager(std::string endpoint, std::string accessKey, std::string secretKey);
 
   Storage GetStorage() const
   {

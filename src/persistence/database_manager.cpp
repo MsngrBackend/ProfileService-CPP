@@ -6,14 +6,14 @@
 
 namespace msngr::profile {
 
-DatabaseManager::DatabaseManager(const std::string& connectionString)
+DatabaseManager::DatabaseManager(std::string connectionString)
 {
-  Initialize(connectionString);
+  Initialize(std::move(connectionString));
 }
 
 DatabaseManager::~DatabaseManager() = default;
 
-void DatabaseManager::Initialize(const std::string & connectionString)
+void DatabaseManager::Initialize(std::string connectionString)
 {
   try {
     // Create connection

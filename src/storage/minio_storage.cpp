@@ -3,8 +3,8 @@
 
 namespace msngr::profile::repository {
 
-MinIOStorage::MinIOStorage(const std::string& endpoint, const std::string& accessKey, const std::string& secretKey)
-    : m_endpoint(endpoint), m_accessKey(accessKey), m_secretKey(secretKey) {}
+MinIOStorage::MinIOStorage(std::string endpoint, std::string accessKey, std::string secretKey)
+    : m_endpoint(std::move(endpoint)), m_accessKey(std::move(accessKey)), m_secretKey(std::move(secretKey)) {}
 
 MinIOStorage::~MinIOStorage() = default;
 

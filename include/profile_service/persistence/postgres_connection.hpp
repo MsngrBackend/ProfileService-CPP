@@ -66,7 +66,7 @@ private:
 
 class PostgresConnection : public IDatabaseConnection {
 public:
-  explicit PostgresConnection(const std::string & connectionString);
+  explicit PostgresConnection(std::string connectionString);
   ~PostgresConnection();
 
   bool IsOpen() const override;

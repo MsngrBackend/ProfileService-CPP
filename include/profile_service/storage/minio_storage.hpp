@@ -2,13 +2,14 @@
 #define MSNGR__PROFILE__STORAGE__MINIO_STORAGE_HPP_
 
 #include "profile_service/storage/avatar_storage.hpp"
+#include <cstdint>
 #include <string>
 
 namespace msngr::profile::repository {
 
 class MinIOStorage : public AvatarStorage {
 public:
-  MinIOStorage(const std::string & endpoint, const std::string & accessKey, const std::string & secretKey);
+  MinIOStorage(std::string endpoint, std::string accessKey, std::string secretKey);
   ~MinIOStorage();
 
   std::string Upload(

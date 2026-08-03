@@ -240,10 +240,10 @@ void PostgresTransaction::Rollback()
   }
 }
 
-PostgresConnection::PostgresConnection(const std::string & connectionString)
+PostgresConnection::PostgresConnection(std::string connectionString)
 {
   try {
-    m_connection = std::make_unique<pqxx::connection>(connectionString);
+    m_connection = std::make_unique<pqxx::connection>(std::move(connectionString));
     m_isOpen = m_connection->is_open();
     if (!m_isOpen) {
       throw std::runtime_error("Failed to connect to PostgreSQL");
@@ -298,7 +298,7 @@ std::unique_ptr<IResultSet> PostgresConnection::ExecuteParams(
 void PostgresConnection::Close() {
   if (m_connection) {
     try {
-      m_connection->disconnect();
+      m_connection->close();
     } catch (...) {}
     m_isOpen = false;
   }

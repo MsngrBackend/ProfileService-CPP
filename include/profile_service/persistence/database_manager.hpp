@@ -23,7 +23,7 @@ struct Repositories {
 
 class DatabaseManager {
 public:
-  explicit DatabaseManager(const std::string & connectionString);
+  explicit DatabaseManager(std::string connectionString);
   ~DatabaseManager();
 
   DatabaseManager(const DatabaseManager &) = delete;
@@ -35,7 +35,7 @@ public:
   }
 
 private:
-  void Initialize(const std::string & connectionString);
+  void Initialize(std::string connectionString);
 
   std::shared_ptr<repository::QueryExecutor> m_executor;
   Repositories m_repositories;

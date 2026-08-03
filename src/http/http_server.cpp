@@ -7,8 +7,8 @@ using tcp = net::ip::tcp;
 
 namespace msngr::profile {
 
-HttpServer::HttpServer(const std::string & address, uint16_t port, RequestHandler handler)
-  : m_address(address), m_port(port), m_requestHandler(std::move(handler)) {}
+HttpServer::HttpServer(std::string address, uint16_t port, RequestHandler handler)
+  : m_address(std::move(address)), m_port(port), m_requestHandler(std::move(handler)) {}
 
 HttpServer::~HttpServer() {
   Stop();

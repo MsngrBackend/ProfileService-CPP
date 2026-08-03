@@ -1,6 +1,7 @@
 #ifndef MSNGR__PROFILE__STORAGE__AVATAR_STORAGE_HPP_
 #define MSNGR__PROFILE__STORAGE__AVATAR_STORAGE_HPP_
 
+#include <cstdint>
 #include <string>
 #include <vector>
 

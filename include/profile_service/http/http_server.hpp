@@ -18,7 +18,7 @@ using RequestHandler = std::function<HttpResponse(const HttpRequest&)>;
 
 class HttpServer {
 public:
-  HttpServer(const std::string & address, uint16_t port, RequestHandler handler);
+  HttpServer(std::string address, uint16_t port, RequestHandler handler);
   ~HttpServer();
 
   HttpServer(const HttpServer &) = delete;

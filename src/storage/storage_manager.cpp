@@ -3,9 +3,11 @@
 
 namespace msngr::profile {
 
-StorageManager::StorageManager(const std::string& endpoint, const std::string& accessKey, const std::string& secretKey) {
-    m_storage.Avatar = std::make_shared<repository::MinIOStorage>(endpoint, accessKey, secretKey);
-    LOG(info) << "Storage manager initialized with endpoint: " << endpoint;
+StorageManager::StorageManager(std::string endpoint, std::string accessKey, std::string secretKey) {
+    m_storage.Avatar = std::make_shared<repository::MinIOStorage>(
+      std::move(endpoint), std::move(accessKey), std::move(secretKey));
+    LOG(info) << "Storage manager initialized with endpoint: "
+              << (m_storage.Avatar ? "configured" : "unconfigured");
 }
 
 } // namespace msngr::profile
