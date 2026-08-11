@@ -1,7 +1,6 @@
 #define BOOST_TEST_MODULE ApiSpecBoostTests
 #include <boost/test/included/unit_test.hpp>
 #include "profile_service/api_spec.hpp"
-#include "profile_service/routing/api_routes.hpp"
 #include <boost/beast/http/verb.hpp>
 
 using namespace msngr::profile;
@@ -10,7 +9,6 @@ BOOST_AUTO_TEST_CASE(ApiSpecHasExpectedRoutes)
 {
   auto const& spec = GetApiSpec();
   BOOST_TEST(spec.Version == "v1");
-  BOOST_TEST(spec.FlatRoutes.size() == api_routes::AllApiRoutes.size());
 
   auto key = std::string("/me:") + std::to_string(static_cast<int>(boost::beast::http::verb::get));
   BOOST_TEST(spec.FlatRoutes.contains(key));

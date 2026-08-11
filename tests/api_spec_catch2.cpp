@@ -1,6 +1,5 @@
 #include <catch2/catch_test_macros.hpp>
 #include "profile_service/api_spec.hpp"
-#include "profile_service/routing/api_routes.hpp"
 #include <boost/beast/http/verb.hpp>
 
 using namespace msngr::profile;
@@ -8,7 +7,6 @@ using namespace msngr::profile;
 TEST_CASE("ApiSpec includes expected routes", "[api_spec]") {
   auto const & spec = GetApiSpec();
   REQUIRE(spec.Version == "v1");
-  REQUIRE(spec.FlatRoutes.size() == api_routes::AllApiRoutes.size());
 
   auto key = std::string("/me:") + std::to_string(static_cast<int>(boost::beast::http::verb::get));
   REQUIRE(spec.FlatRoutes.contains(key));

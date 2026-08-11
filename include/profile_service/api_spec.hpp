@@ -77,7 +77,7 @@ struct ApiSpec {
   std::unordered_map<std::string, HandlerInfo> FlatRoutes;
 };
 
-const ApiSpec& GetApiSpec();
+const ApiSpec & GetApiSpec();
 
 } // namespace msngr::profile
 

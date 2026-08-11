@@ -3,7 +3,7 @@
 
 namespace msngr::profile {
 
-const ApiSpec& GetApiSpec() {
+const ApiSpec & GetApiSpec() {
     static const ApiSpec spec = []() {
       ApiSpec s;
       s.Version = "v1";
