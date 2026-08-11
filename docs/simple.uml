@@ -1,0 +1,279 @@
+@startuml Profile Service Simplified
+
+!define COMPONENT class
+!define INTERFACE interface
+
+' ==================== Основные компоненты ====================
+
+class Application {
+  - Config m_config
+  - HttpServer m_httpServer
+  - RequestRouter m_router
+  - ServiceFactory m_serviceFactory
+  - AuthService m_authService
+  - DatabaseManager m_dbManager
+  - StorageManager m_storageManager
+  + Start()
+  + Stop()
+}
+
+class HttpServer {
+  - RequestHandler m_handler
+  + Run()
+  + Stop()
+}
+
+class RequestRouter {
+  - AuthService* m_auth
+  - Services m_services
+  + BuildRoutes()
+  + Route(request)
+}
+
+interface IService {
+  + Execute(request, context)
+}
+
+class ProfileService {
+  - ProfileRepository m_repo
+  - AvatarStorage m_storage
+  + Execute()
+  - HandleCreateProfile()
+  - HandleGetMyProfile()
+  - HandleUpdateProfile()
+  - HandleGetProfileByID()
+  - HandleUploadAvatar()
+  - HandleDeleteAvatar()
+}
+
+class ContactsService {
+  - ContactsRepository m_repo
+  + Execute()
+  - HandleGetContacts()
+  - HandleAddContact()
+  - HandleDeleteContact()
+}
+
+class PrivacyService {
+  - PrivacyRepository m_repo
+  + Execute()
+  - HandleGetPrivacy()
+  - HandleUpdatePrivacy()
+}
+
+class FavoritesService {
+  - FavoriteRepository m_repo
+  + Execute()
+  - HandleGetFavorites()
+  - HandleAddFavorite()
+  - HandleRemoveFavorite()
+}
+
+class NotificationsService {
+  - NotificationRepository m_repo
+  + Execute()
+  - HandleGetNotifications()
+  - HandleGetChatNotifications()
+  - HandleUpdateNotifications()
+  - HandleUpdateChatNotifications()
+}
+
+class ServiceFactory {
+  + CreateServices()
+}
+
+class AuthService {
+  + Check(userId, scope)
+}
+
+class DatabaseManager {
+  - QueryExecutor m_executor
+  - Repositories m_repos
+  + Initialize()
+  + GetRepositories()
+}
+
+class QueryExecutor {
+  - IDatabaseConnection m_conn
+  + ExecuteSelect()
+  + ExecuteModify()
+}
+
+interface IDatabaseConnection {
+  + Execute()
+  + ExecuteParams()
+  + BeginTransaction()
+}
+
+class PostgresConnection {
+  - pqxx::connection m_conn
+  + Execute()
+  + ExecuteParams()
+}
+
+class ProfileRepository {
+  - QueryExecutor m_executor
+  + Create()
+  + GetByID()
+  + Update()
+  + UpdateAvatarURL()
+}
+
+class ContactsRepository {
+  - QueryExecutor m_executor
+  + List()
+  + Add()
+  + Remove()
+}
+
+class PrivacyRepository {
+  - QueryExecutor m_executor
+  + Get()
+  + Update()
+}
+
+class FavoriteRepository {
+  - QueryExecutor m_executor
+  + List()
+  + Add()
+  + Remove()
+}
+
+class NotificationRepository {
+  - QueryExecutor m_executor
+  + Get()
+  + Upsert()
+}
+
+class StorageManager {
+  - MinIOStorage m_storage
+  + GetStorage()
+}
+
+class MinIOStorage {
+  + Upload()
+  + Delete()
+}
+
+' ==================== Доменные модели ====================
+
+class Profile {
+  + UserID
+  + FirstName
+  + LastName
+  + Username
+  + Bio
+  + AvatarUrl
+  + CreatedAt
+  + UpdatedAt
+}
+
+class Contact {
+  + OwnerID
+  + ContactID
+  + Alias
+  + CreatedAt
+}
+
+class PrivacySettings {
+  + UserID
+  + ProfileVisibility
+  + LastSeenVisibility
+  + AvatarVisibility
+}
+
+class NotificationSettings {
+  + UserID
+  + ChatID
+  + Muted
+  + MutedUntil
+}
+
+class Favorite {
+  + UserID
+  + ChatID
+  + CreatedAt
+}
+
+' ==================== API Спецификация ====================
+
+class ApiSpec {
+  + Version
+  + FlatRoutes
+}
+
+enum HandlerId {
+  CreateProfile
+  GetMyProfile
+  UpdateProfile
+  GetProfileByID
+  UploadAvatar
+  DeleteAvatar
+  GetPrivacy
+  UpdatePrivacy
+  GetContacts
+  AddContact
+  DeleteContact
+  GetFavorites
+  AddFavorite
+  RemoveFavorite
+  GetNotifications
+  GetChatNotifications
+  UpdateNotifications
+  UpdateChatNotifications
+}
+
+' ==================== Связи ====================
+
+Application --> HttpServer
+Application --> RequestRouter
+Application --> ServiceFactory
+Application --> AuthService
+Application --> DatabaseManager
+Application --> StorageManager
+
+HttpServer --> RequestRouter : uses
+RequestRouter --> IService : delegates
+RequestRouter --> AuthService : uses
+
+ServiceFactory ..> ProfileService : creates
+ServiceFactory ..> ContactsService : creates
+ServiceFactory ..> PrivacyService : creates
+ServiceFactory ..> FavoritesService : creates
+ServiceFactory ..> NotificationsService : creates
+
+ProfileService --|> IService
+ContactsService --|> IService
+PrivacyService --|> IService
+FavoritesService --|> IService
+NotificationsService --|> IService
+
+ProfileService --> ProfileRepository : uses
+ProfileService --> MinIOStorage : uses
+ContactsService --> ContactsRepository : uses
+PrivacyService --> PrivacyRepository : uses
+FavoritesService --> FavoriteRepository : uses
+NotificationsService --> NotificationRepository : uses
+
+DatabaseManager --> QueryExecutor : contains
+QueryExecutor --> IDatabaseConnection : uses
+PostgresConnection --|> IDatabaseConnection
+
+ProfileRepository --> QueryExecutor : uses
+ContactsRepository --> QueryExecutor : uses
+PrivacyRepository --> QueryExecutor : uses
+FavoriteRepository --> QueryExecutor : uses
+NotificationRepository --> QueryExecutor : uses
+
+StorageManager --> MinIOStorage : contains
+
+ProfileRepository --> Profile : maps
+ContactsRepository --> Contact : maps
+PrivacyRepository --> PrivacySettings : maps
+FavoriteRepository --> Favorite : maps
+NotificationRepository --> NotificationSettings : maps
+
+RequestRouter --> ApiSpec : uses
+ApiSpec --> HandlerId : references
+
+@enduml
