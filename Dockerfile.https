@@ -1,0 +1,71 @@
+# Stage 1: Install dependencies
+FROM debian:bookworm-slim AS deps
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    cmake \
+    git \
+    pkg-config \
+    ca-certificates \
+    libboost-system-dev \
+    libboost-program-options-dev \
+    libboost-log-dev \
+    libboost-thread-dev \
+    libboost-filesystem-dev \
+    nlohmann-json3-dev \
+    libpqxx-dev \
+    libpq-dev \
+    libssl-dev \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Stage 2: Build the application
+FROM deps AS builder
+
+COPY CMakeLists.txt ./
+COPY include ./include
+COPY src ./src
+
+RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build build --config Release -j"$(nproc)"
+
+# Stage 3: Generate certificates and runtime image
+FROM debian:bookworm-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libboost-system1.74.0 \
+    libboost-program-options1.74.0 \
+    libboost-log1.74.0 \
+    libboost-thread1.74.0 \
+    libboost-filesystem1.74.0 \
+    libpqxx-6.4 \
+    libpq5 \
+    ca-certificates \
+    libssl3 \
+    openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/build/profile_service /usr/local/bin/profile_service
+
+# Generate self-signed certificate for HTTPS
+RUN openssl req -x509 -newkey rsa:2048 -nodes \
+    -keyout /app/server.key \
+    -out /app/server.crt \
+    -days 365 \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=localhost" \
+    && chmod 600 /app/server.key \
+    && chmod 644 /app/server.crt
+
+# Generate DH parameters for perfect forward secrecy (takes time but improves security)
+# RUN openssl dhparam -out /app/dhparam.pem 2048
+
+EXPOSE 8082
+EXPOSE 8443
+
+# Default command - HTTPS enabled
+ENTRYPOINT ["profile_service"]
+CMD ["--address", "0.0.0.0", "--port", "8443", "--tls", "--cert", "/app/server.crt", "--key", "/app/server.key"]

@@ -27,6 +27,12 @@ public:
     std::string MinioEndpoint = "localhost:9000";
     std::string MinioAccessKey;
     std::string MinioSecretKey;
+
+    // TLS/HTTPS configuration
+    bool EnableTls = false;
+    std::string TlsCertFile = "server.crt";
+    std::string TlsKeyFile = "server.key";
+    std::string TlsDhFile = "";
   };
 
   explicit Application(Config config);

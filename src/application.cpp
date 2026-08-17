@@ -4,7 +4,9 @@
 
 namespace msngr::profile {
 
-Application::Application(Config config) : m_config(std::move(config)) {}
+Application::Application(Config config)
+: m_config(std::move(config))
+{}
 
 Application::~Application(){
   Stop();
@@ -35,16 +37,16 @@ bool Application::Start()
 void Application::Stop()
 {
   if (!m_running.exchange(false)) {
-      return;
+    return;
   }
 
   if (m_httpServer) {
-      m_httpServer->Stop();
+    m_httpServer->Stop();
   }
 
   m_mainThread.request_stop();
   if (m_mainThread.joinable()) {
-      m_mainThread.join();
+    m_mainThread.join();
   }
 
   LOG(info) << "Application stopped";
@@ -79,12 +81,22 @@ bool Application::Initialize()
     m_router->BuildRoutes();
 
     LOG(info) << "Initializing HttpServer...";
+
+    TlsConfig tlsConfig;
+    tlsConfig.Enabled = m_config.EnableTls;
+    if (tlsConfig.Enabled) {
+      tlsConfig.CertificateFile = m_config.TlsCertFile;
+      tlsConfig.PrivateKeyFile = m_config.TlsKeyFile;
+      tlsConfig.DhParamFile = m_config.TlsDhFile;
+    }
+
     m_httpServer = std::make_unique<HttpServer>(
       m_config.Address,
       m_config.Port,
       [this](const HttpRequest& req) {
           return m_router->Route(req);
-      }
+      },
+      tlsConfig
     );
 
     LOG(info) << "Application initialized successfully";

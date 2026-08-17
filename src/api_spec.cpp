@@ -1,5 +1,6 @@
 #include "profile_service/api_spec.hpp"
 #include <boost/beast/http/verb.hpp>
+#include <string_view>
 
 namespace msngr::profile {
 
@@ -8,12 +9,12 @@ const ApiSpec & GetApiSpec() {
       ApiSpec s;
       s.Version = "v1";
 
-      auto addRoute = [&](const std::string & path,
+      auto addRoute = [&](std::string_view path,
                           beast_http::verb method,
                           HandlerId id,
-                          const std::string & scope) {
-        std::string key = path + ":" + std::to_string(static_cast<int>(method));
-        s.FlatRoutes[key] = {method, id, scope};  // Use id
+                          std::string_view scope) {
+        std::string key = std::string(path) + ":" + std::to_string(static_cast<int>(method));
+        s.FlatRoutes[key] = {method, id, std::string(scope)};
       };
 
       addRoute("/internal/profiles", beast_http::verb::post, HandlerId::CreateProfile, "profile:write");

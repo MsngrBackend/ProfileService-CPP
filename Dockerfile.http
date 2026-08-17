@@ -1,3 +1,4 @@
+# Stage 1: Install dependencies
 FROM debian:bookworm-slim AS deps
 
 WORKDIR /app
@@ -16,8 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     nlohmann-json3-dev \
     libpqxx-dev \
     libpq-dev \
-  && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
+# Stage 2: Build the application
 FROM deps AS builder
 
 COPY CMakeLists.txt ./
@@ -25,8 +27,9 @@ COPY include ./include
 COPY src ./src
 
 RUN cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-  && cmake --build build --config Release -j"$(nproc)"
+    && cmake --build build --config Release -j"$(nproc)"
 
+# Stage 3: Runtime image
 FROM debian:bookworm-slim
 
 WORKDIR /app
@@ -40,11 +43,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpqxx-6.4 \
     libpq5 \
     ca-certificates \
-  && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/build/profile_service /usr/local/bin/profile_service
 
 EXPOSE 8082
 
+# Default command - HTTP only
 ENTRYPOINT ["profile_service"]
 CMD ["--address", "0.0.0.0", "--port", "8082"]

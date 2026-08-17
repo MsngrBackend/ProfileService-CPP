@@ -21,7 +21,11 @@ int main(int argc, char** argv) {
     options.add_options()
       ("help,h", "Show help")
       ("address,a", po::value<std::string>(&config.Address)->default_value("0.0.0.0"), "Bind address")
-      ("port,p", po::value<uint16_t>(&config.Port)->default_value(8082), "Bind port");
+      ("port,p", po::value<uint16_t>(&config.Port)->default_value(8082), "Bind port")
+      ("tls", po::value<bool>(&config.EnableTls)->default_value(false), "Enable TLS/HTTPS")
+      ("cert", po::value<std::string>(&config.TlsCertFile)->default_value("server.crt"), "TLS certificate file")
+      ("key", po::value<std::string>(&config.TlsKeyFile)->default_value("server.key"), "TLS private key file")
+      ("dhparam", po::value<std::string>(&config.TlsDhFile)->default_value(""), "TLS DH parameters file");
 
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, options), vm);
@@ -59,6 +63,7 @@ int main(int argc, char** argv) {
     LOG(info) << "Starting Profile Service...";
     LOG(info) << "  Address: " << config.Address;
     LOG(info) << "  Port: " << config.Port;
+    LOG(info) << "  TLS: " << (config.EnableTls ? "enabled" : "disabled");
     LOG(info) << "  Database: " << config.DatabaseUrl;
     LOG(info) << "  MinIO: " << config.MinioEndpoint;
 
